@@ -14,3 +14,15 @@ export default function App() {
     </Routes>
   )
 }
+import { useEffect } from "react";
+import { startCustomerGPS } from "./modules/gpsTrackerCustomer";
+
+export default function App() {
+  useEffect(() => {
+    const custId = "cust001";
+    const custName = "Hanif Customer";
+    startCustomerGPS(custId, custName);
+  }, []);
+
+  return <div>Halo Customer 👋, GPS sedang aktif...</div>;
+}
