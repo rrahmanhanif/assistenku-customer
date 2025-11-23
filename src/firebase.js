@@ -1,8 +1,8 @@
-// Import Firebase functions
+// Import Firebase
 import { initializeApp } from "firebase/app";
 import { getAnalytics } from "firebase/analytics";
 
-// Firebase config dari console.firebase
+// Konfigurasi Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyDDw8VRXSvjGuMgKsEvbufLmXyGgI4hu7U",
   authDomain: "assistenku-customer.firebaseapp.com",
@@ -13,7 +13,7 @@ const firebaseConfig = {
   measurementId: "G-813KN9V58E"
 };
 
-// Init Firebase
+// Inisialisasi Firebase
 const app = initializeApp(firebaseConfig);
 const analytics = getAnalytics(app);
 
