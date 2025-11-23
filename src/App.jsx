@@ -1,52 +1,51 @@
-import React from 'react'
-import { Routes, Route, Navigate } from 'react-router-dom'
-import Login from './pages/Login'
-import Home from './pages/Home'
-import Profile from './pages/Profile'
+import React, { useEffect } from "react";
+import { Routes, Route, Navigate } from "react-router-dom";
 
-export default function App() {
-  const loggedIn = localStorage.getItem('customer_auth') === 'true'
-  return (
-    <Routes>
-      <Route path="/" element={loggedIn ? <Home /> : <Navigate to="/login" />} />
-      <Route path="/login" element={<Login />} />
-      <Route path="/profile" element={<Profile />} />
-    </Routes>
-  )
-}
-import { useEffect } from "react";
+import Login from "./pages/Login";
+import Home from "./pages/Home";
+import Profile from "./pages/Profile";
+import TrackOrder from "./pages/TrackOrder"; // fitur tracking MITRA
+
 import { startCustomerGPS } from "./modules/gpsTrackerCustomer";
 
 export default function App() {
+  const loggedIn = localStorage.getItem("customer_auth") === "true";
+
   useEffect(() => {
-    const custId = "cust001";
-    const custName = "Hanif Customer";
-    startCustomerGPS(custId, custName);
-  }, []);
+    if (!loggedIn) return;
 
-  return <div>Halo Customer 👋, GPS sedang aktif...</div>;
-}
-import { db } from "./firebase";
-import { collection, addDoc } from "firebase/firestore";
+    // Ambil ID customer
+    const customerId = localStorage.getItem("customer_id");
+    const customerName = localStorage.getItem("customer_name");
 
-const buatOrder = async () => {
-  await addDoc(collection(db, "orders"), {
-    orderId: "order" + Date.now(),
-    customerId: "cust001",
-    mitraId: "mitra001",
-    serviceType: "Antar Barang",
-    price: 100000,
-    status: "Menunggu",
-    createdAt: new Date().toISOString(),
-  });
-  alert("Order berhasil dibuat!");
-};
+    if (customerId && customerName) {
+      // Aktifkan GPS customer
+      startCustomerGPS(customerId, customerName);
+    }
+  }, [loggedIn]);
 
-export default function App() {
   return (
-    <div>
-      <h2>Customer App</h2>
-      <button onClick={buatOrder}>Buat Order</button>
-    </div>
+    <Routes>
+      {/* HOME */}
+      <Route
+        path="/"
+        element={loggedIn ? <Home /> : <Navigate to="/login" />}
+      />
+
+      {/* LOGIN */}
+      <Route path="/login" element={<Login />} />
+
+      {/* PROFILE */}
+      <Route
+        path="/profile"
+        element={loggedIn ? <Profile /> : <Navigate to="/login" />}
+      />
+
+      {/* TRACK MITRA */}
+      <Route
+        path="/track/:orderId"
+        element={loggedIn ? <TrackOrder /> : <Navigate to="/login" />}
+      />
+    </Routes>
   );
 }
