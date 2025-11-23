@@ -2,9 +2,8 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import L from "leaflet";
-import { supabase } from "../lib/supabaseClient"; // ✔ perbaikan import
+import { supabase } from "../lib/supabaseClient";
 
-// ICON MITRA
 const mitraIcon = new L.Icon({
   iconUrl: "/mitra.png",
   iconSize: [40, 40],
@@ -12,12 +11,11 @@ const mitraIcon = new L.Icon({
 });
 
 export default function TrackOrder() {
-  const { id } = useParams(); // ID order
+  const { id } = useParams();
   const [order, setOrder] = useState(null);
   const [mitra, setMitra] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Ambil data order + data mitra
   const loadOrder = async () => {
     const { data: orderData } = await supabase
       .from("orders")
@@ -40,11 +38,15 @@ export default function TrackOrder() {
     setLoading(false);
   };
 
-  // Listener realtime posisi MITRA
-  const listenMitra = () => {
+  useEffect(() => {
+    loadOrder();
+  }, []);
+
+  // Realtime tracking
+  useEffect(() => {
     if (!order) return;
 
-    supabase
+    const channel = supabase
       .channel("mitra-location")
       .on(
         "postgres_changes",
@@ -55,32 +57,24 @@ export default function TrackOrder() {
           filter: `id=eq.${order.mitra_id}`,
         },
         (payload) => {
-          setMitra(payload.new); // update realtime
+          setMitra(payload.new);
         }
       )
       .subscribe();
-  };
 
-  useEffect(() => {
-    loadOrder();
-  }, []);
-
-  useEffect(() => {
-    if (order) listenMitra();
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [order]);
 
-  // Loading
   if (loading) return <div className="p-5">Memuat...</div>;
   if (!order) return <div className="p-5">Order tidak ditemukan</div>;
 
-  // Mitra belum mengaktifkan GPS
-  if (!mitra || !mitra.lat || !mitra.lng) {
+  if (!mitra?.lat || !mitra?.lng) {
     return (
       <div className="p-5">
         <h2 className="text-xl font-semibold text-blue-600">Lacak Mitra</h2>
-        <p className="mt-3 text-gray-600">
-          Menunggu mitra mengaktifkan GPS...
-        </p>
+        <p className="mt-3 text-gray-600">Menunggu mitra mengaktifkan GPS...</p>
       </div>
     );
   }
