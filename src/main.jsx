@@ -11,3 +11,5 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     </BrowserRouter>
   </React.StrictMode>,
 )
+logEvent(analytics, "customer_app_opened");
+logEvent(analytics, "mitra_login_success");
