@@ -7,8 +7,8 @@ const firebaseConfig = {
   authDomain: "assistenku-8ef85.firebaseapp.com",
   projectId: "assistenku-8ef85",
   storageBucket: "assistenku-8ef85.appspot.com",
-  messagingSenderId: "230530907663",
-  appId: "1:230530907663:web:80ebf182eba323a630e0e0"
+  messagingSenderId: "1090989610821",
+  appId: "1:1090989610821:web:yourappid",
 };
 
 const app = initializeApp(firebaseConfig);
