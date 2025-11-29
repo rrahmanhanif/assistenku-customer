@@ -1,23 +1,46 @@
 // src/modules/gpsTrackerCustomer.js
-import { db } from "../firebase";
-import {
-  doc,
-  setDoc,
-  serverTimestamp
-} from "firebase/firestore";
 
-export async function updateCustomerGPS(uid, latitude, longitude) {
+import { initializeApp } from "firebase/app";
+import { getFirestore, doc, setDoc, getDoc } from "firebase/firestore";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBSL87qkuwSQU8aXvLuu24nV7jUoX2mOSA",
+  authDomain: "assistenku-8ef85.firebaseapp.com",
+  projectId: "assistenku-8ef85",
+  storageBucket: "assistenku-8ef85.appspot.com",
+  messagingSenderId: "277608324630",
+  appId: "1:277608324630:web:e923ef97876b092daff17c"
+};
+
+// Init Firebase
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+// SIMPAN GPS
+export async function saveCustomerLocation(userId, lat, lng) {
   try {
-    await setDoc(
-      doc(db, "customer_location", uid),
-      {
-        latitude,
-        longitude,
-        updatedAt: serverTimestamp()
-      },
-      { merge: true }
-    );
+    await setDoc(doc(db, "customer_locations", userId), {
+      lat,
+      lng,
+      updatedAt: Date.now()
+    });
+    console.log("Location saved successfully");
   } catch (error) {
-    console.error("GPS update failed:", error);
+    console.error("Error saving location:", error);
+  }
+}
+
+// AMBIL GPS
+export async function getCustomerLocation(userId) {
+  try {
+    const snapshot = await getDoc(doc(db, "customer_locations", userId));
+    if (snapshot.exists()) {
+      return snapshot.data();
+    } else {
+      return null;
+    }
+  } catch (error) {
+    console.error("Error reading location:", error);
+    return null;
   }
 }
