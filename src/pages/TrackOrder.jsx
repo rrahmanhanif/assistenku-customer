@@ -1,99 +1,41 @@
-import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
-import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
-import L from "leaflet";
-import { supabase } from "../lib/supabaseClient";
-
-const mitraIcon = new L.Icon({
-  iconUrl: "/mitra.png",
-  iconSize: [40, 40],
-  iconAnchor: [20, 40],
-});
+import React from "react";
 
 export default function TrackOrder() {
-  const { id } = useParams();
-  const [order, setOrder] = useState(null);
-  const [mitra, setMitra] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  const loadOrder = async () => {
-    const { data: orderData } = await supabase
-      .from("orders")
-      .select("*")
-      .eq("id", id)
-      .single();
-
-    if (orderData) {
-      setOrder(orderData);
-
-      const { data: mitraData } = await supabase
-        .from("mitra")
-        .select("*")
-        .eq("id", orderData.mitra_id)
-        .single();
-
-      setMitra(mitraData);
-    }
-
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    loadOrder();
-  }, []);
-
-  // Realtime tracking
-  useEffect(() => {
-    if (!order) return;
-
-    const channel = supabase
-      .channel("mitra-location")
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "mitra",
-          filter: `id=eq.${order.mitra_id}`,
-        },
-        (payload) => {
-          setMitra(payload.new);
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [order]);
-
-  if (loading) return <div className="p-5">Memuat...</div>;
-  if (!order) return <div className="p-5">Order tidak ditemukan</div>;
-
-  if (!mitra?.lat || !mitra?.lng) {
-    return (
-      <div className="p-5">
-        <h2 className="text-xl font-semibold text-blue-600">Lacak Mitra</h2>
-        <p className="mt-3 text-gray-600">Menunggu mitra mengaktifkan GPS...</p>
-      </div>
-    );
-  }
-
   return (
-    <div className="w-full h-screen">
-      <h1 className="p-3 text-xl font-bold text-blue-600">Lacak Mitra</h1>
+    <div style={styles.container}>
+      <h1 style={styles.title}>Melacak Pesanan</h1>
 
-      <MapContainer
-        center={[mitra.lat, mitra.lng]}
-        zoom={15}
-        style={{ height: "90vh", width: "100%" }}
-      >
-        <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-
-        <Marker position={[mitra.lat, mitra.lng]} icon={mitraIcon}>
-          <Popup>Mitra sedang menuju lokasi Anda</Popup>
-        </Marker>
-      </MapContainer>
+      <div style={styles.card}>
+        <p style={styles.text}>Fitur pelacakan sedang dalam pengembangan.</p>
+        <p style={styles.textSmall}>
+          Nantinya akan tampil peta real-time seperti Gojek & Grab.
+        </p>
+      </div>
     </div>
   );
 }
+
+const styles = {
+  container: {
+    padding: "20px",
+    display: "flex",
+    flexDirection: "column",
+    gap: "20px",
+  },
+  title: {
+    fontSize: "28px",
+    fontWeight: "bold",
+  },
+  card: {
+    background: "#f5f5f5",
+    padding: "20px",
+    borderRadius: "12px",
+  },
+  text: {
+    fontSize: "18px",
+  },
+  textSmall: {
+    opacity: 0.6,
+    marginTop: "5px",
+  },
+};
