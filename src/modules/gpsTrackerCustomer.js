@@ -1,10 +1,23 @@
+// src/modules/gpsTrackerCustomer.js
 import { db } from "../firebase";
-import { doc, updateDoc } from "firebase/firestore";
+import {
+  doc,
+  setDoc,
+  serverTimestamp
+} from "firebase/firestore";
 
-export async function updateCustomerLocation(uid, lat, lng) {
-await updateDoc(doc(db, "gps_customer", userId), {
-  lat,
-  lng,
-  updatedAt: Date.now()
-});
+export async function updateCustomerGPS(uid, latitude, longitude) {
+  try {
+    await setDoc(
+      doc(db, "customer_location", uid),
+      {
+        latitude,
+        longitude,
+        updatedAt: serverTimestamp()
+      },
+      { merge: true }
+    );
+  } catch (error) {
+    console.error("GPS update failed:", error);
+  }
 }
