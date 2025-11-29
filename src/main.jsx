@@ -1,5 +1,12 @@
-import React from "react";
-import ReactDOM from "react-dom";
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import App from './App';
+
+// WAJIB UNTUK LEAFLET MAP
 import 'leaflet/dist/leaflet.css';
-import App from "./App";
-import "./index.css"; // ✅ wajib sesuai
+
+ReactDOM.createRoot(document.getElementById('root')).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+);
