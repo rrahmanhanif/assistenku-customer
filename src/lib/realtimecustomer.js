@@ -1,3 +1,4 @@
+// src/lib/realtimeCustomer.js
 import { createClient } from "@supabase/supabase-js";
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -13,7 +14,7 @@ export function subscribeOrderStatus(orderId, callback) {
         event: "*",
         schema: "public",
         table: "orders",
-        filter: `id=eq.${orderId}`,
+        filter: `id=eq.${orderId}`
       },
       (payload) => callback(payload.new)
     )
