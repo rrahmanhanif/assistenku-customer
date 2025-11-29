@@ -1,8 +1,5 @@
 // src/modules/gpsTrackerCustomer.js
 
-import { initializeApp } from "firebase/app";
-import { getFirestore, doc, setDoc, getDoc } from "firebase/firestore";
-
 const firebaseConfig = {
   apiKey: "AIzaSyBSL87qkuwSQU8aXvLuu24nV7jUoX2mOSA",
   authDomain: "assistenku-8ef85.firebaseapp.com",
