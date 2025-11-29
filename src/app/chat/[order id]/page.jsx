@@ -1,12 +1,12 @@
+// src/app/chat/[orderId]/page.jsx
 "use client";
-
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import { sendMessage, subscribeChat } from "@/lib/chatCustomer";
 
-export default function ChatPage({ params }) {
-  const { orderId } = params;
-  const [messages, setMessages] = useState([]);
+export default function CustomerChat({ params }) {
+  const orderId = params.orderId;
   const [text, setText] = useState("");
+  const [messages, setMessages] = useState([]);
 
   useEffect(() => {
     const sub = subscribeChat(orderId, (msg) =>
@@ -22,7 +22,8 @@ export default function ChatPage({ params }) {
 
   return (
     <div className="p-4 space-y-4">
-      <h2 className="text-lg font-bold">Chat Pesanan #{orderId}</h2>
+      <h2 className="text-xl font-bold">Chat Pesanan #{orderId}</h2>
+
       <div className="space-y-2">
         {messages.map((m) => (
           <div key={m.id} className="border rounded px-2 py-1">
@@ -34,13 +35,13 @@ export default function ChatPage({ params }) {
       <div className="flex gap-2 mt-4">
         <input
           type="text"
-          className="flex-1 border rounded px-2 py-1"
-          placeholder="Tulis pesan..."
           value={text}
+          placeholder="Tulis pesan..."
+          className="border px-2 py-1 flex-1"
           onChange={(e) => setText(e.target.value)}
         />
         <button
-          className="px-3 py-1 bg-blue-600 text-white rounded"
+          className="bg-blue-600 text-white px-3 py-1 rounded"
           onClick={handleSend}
         >
           Kirim
