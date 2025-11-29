@@ -1,43 +1,21 @@
 // src/modules/gpsTrackerCustomer.js
+// berubah menjadi util GPS berbasis geolocation browser,
+// tanpa Firebase
 
-const firebaseConfig = {
-  apiKey: "AIzaSyBSL87qkuwSQU8aXvLuu24nV7jUoX2mOSA",
-  authDomain: "assistenku-8ef85.firebaseapp.com",
-  projectId: "assistenku-8ef85",
-  storageBucket: "assistenku-8ef85.appspot.com",
-  messagingSenderId: "277608324630",
-  appId: "1:277608324630:web:e923ef97876b092daff17c"
-};
+export async function getCustomerLocation() {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) return reject("Geolocation tidak tersedia");
 
-// Init Firebase
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-
-// SIMPAN GPS
-export async function saveCustomerLocation(userId, lat, lng) {
-  try {
-    await setDoc(doc(db, "customer_locations", userId), {
-      lat,
-      lng,
-      updatedAt: Date.now()
-    });
-    console.log("Location saved successfully");
-  } catch (error) {
-    console.error("Error saving location:", error);
-  }
-}
-
-// AMBIL GPS
-export async function getCustomerLocation(userId) {
-  try {
-    const snapshot = await getDoc(doc(db, "customer_locations", userId));
-    if (snapshot.exists()) {
-      return snapshot.data();
-    } else {
-      return null;
-    }
-  } catch (error) {
-    console.error("Error reading location:", error);
-    return null;
-  }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        resolve({
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+        });
+      },
+      (err) => {
+        reject("Gagal mengambil lokasi: " + err.message);
+      }
+    );
+  });
 }
