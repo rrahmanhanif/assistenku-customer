@@ -1,5 +1,5 @@
 import { db } from "../firebase";
-import { doc, setDoc, getDoc } from "firebase/firestore";
+import { doc, updateDoc } from "firebase/firestore";
 
 export async function updateCustomerLocation(uid, lat, lng) {
   await setDoc(
