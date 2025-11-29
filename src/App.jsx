@@ -1,3 +1,4 @@
+import 'leaflet/dist/leaflet.css';
 import React, { useEffect } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 
