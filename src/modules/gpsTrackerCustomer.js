@@ -1,22 +1,10 @@
 import { db } from "../firebase";
-import { doc, updateDoc, setDoc } from "firebase/firestore";
+import { doc, setDoc, getDoc } from "firebase/firestore";
 
-export const startCustomerGPS = async (customerId, customerName) => {
-  navigator.geolocation.watchPosition(
-    async (pos) => {
-      const data = {
-        id: customerId,
-        name: customerName,
-        lat: pos.coords.latitude,
-        lng: pos.coords.longitude,
-        updatedAt: new Date().toISOString(),
-      };
-
-      await setDoc(doc(db, "customer_locations", customerId), data, { merge: true });
-    },
-    (err) => {
-      console.log("GPS Error:", err);
-    },
-    { enableHighAccuracy: true, maximumAge: 2000, timeout: 5000 }
+export async function updateCustomerLocation(uid, lat, lng) {
+  await setDoc(
+    doc(db, "customer_locations", uid),
+    { lat, lng, updatedAt: Date.now() },
+    { merge: true }
   );
-};
+}
