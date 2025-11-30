@@ -34,6 +34,7 @@ export default function App() {
         element={loggedIn ? <Home /> : <Navigate to="/login" />}
       />
       <Route path="/chat/:orderId" element={<Chat />} />
+      <Route path="/history" element={<History />} />
 
       {/* LOGIN */}
       <Route path="/login" element={<Login />} />
