@@ -12,11 +12,19 @@ const submitLogin = async () => {
   // proses login lanjut…
 };
 
-export default function Login() {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
-  const navigate = useNavigate()
+let lastLogin = 0;
+
+async function handleLogin(e) {
+  e.preventDefault();
+
+  const now = Date.now();
+  if (now - lastLogin < 8000)
+    return alert("Terlalu sering, coba lagi 8 detik");
+
+  lastLogin = now;
+
+  // ... lanjutan kode login kamu
+}
 
   const handleLogin = async (e) => {
     e.preventDefault()
