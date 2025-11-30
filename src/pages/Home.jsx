@@ -1,86 +1,61 @@
-import React, { useEffect, useState } from "react";
-import { supabase } from "../lib/supabaseClient";
-import Header from "../components/Header";
+import React, { useState } from "react";
+import { createOrder } from "../lib/orders";
 
 export default function Home() {
-  const [orders, setOrders] = useState([]);
-  const [loading, setLoading] = useState(true);
-
   const customer_id = localStorage.getItem("customer_id");
+  const customer_name = localStorage.getItem("customer_name");
 
-  useEffect(() => {
-    fetchOrders();
-  }, []);
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState("");
 
-  // ===============================
-  // Ambil hanya order milik customer
-  // ===============================
-  async function fetchOrders() {
-    if (!customer_id) return;
+  async function handleCreateOrder() {
+    if (!customer_id || !customer_name) {
+      setMessage("Login ulang diperlukan.");
+      return;
+    }
 
-    const { data, error } = await supabase
-      .from("orders")
-      .select("*")
-      .eq("customer_id", customer_id)
-      .order("created_at", { ascending: false });
+    setLoading(true);
+    setMessage("");
 
-    if (!error) setOrders(data || []);
+    const newOrder = await createOrder({
+      customer_id,
+      customer_name,
+      total_price: 50000, // default sementara
+    });
+
     setLoading(false);
+
+    if (!newOrder) {
+      setMessage("Gagal membuat pesanan.");
+      return;
+    }
+
+    setMessage("Pesanan berhasil dibuat! Order ID: " + newOrder.id);
+
+    // Setelah pesan dibuat → redirect ke tracking order
+    window.location.href = `/track/${newOrder.id}`;
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Header />
+    <div style={{ padding: "20px" }}>
+      <h2>Selamat datang, {customer_name}</h2>
 
-      <div className="p-6">
-        <h2 className="text-2xl font-semibold mb-4 text-blue-700">
-          Pesanan Saya
-        </h2>
+      <button
+        onClick={handleCreateOrder}
+        disabled={loading}
+        style={{
+          padding: "12px",
+          width: "100%",
+          fontSize: "16px",
+          background: "#007bff",
+          color: "white",
+          borderRadius: "8px",
+        }}
+      >
+        {loading ? "Memproses..." : "Buat Pesanan Baru"}
+      </button>
 
-        {loading && (
-          <p className="text-gray-600">Memuat pesanan...</p>
-        )}
-
-        {!loading && orders.length === 0 && (
-          <p className="text-gray-600">Anda belum memiliki pesanan.</p>
-        )}
-
-        {!loading && orders.length > 0 && (
-          <ul className="space-y-3">
-            {orders.map((o) => (
-              <li
-                key={o.id}
-                className="p-4 bg-white rounded-lg shadow border"
-              >
-                <p>
-                  <strong>Layanan:</strong> {o.layanan}
-                </p>
-                <p>
-                  <strong>Dari:</strong> {o.alamat}
-                </p>
-                <p>
-                  <strong>Tujuan:</strong> {o.tujuan}
-                </p>
-
-                <p className="mt-2">
-                  <strong>Status:</strong>{" "}
-                  <span className="text-blue-600 font-semibold">
-                    {o.status}
-                  </span>
-                </p>
-
-                {/* tombol ke tracking */}
-                <button
-                  onClick={() => (window.location.href = `/track/${o.id}`)}
-                  className="mt-3 bg-blue-600 text-white px-4 py-2 rounded w-full"
-                >
-                  Lacak Perjalanan
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+      {message && <p style={{ marginTop: "15px" }}>{message}</p>}
     </div>
   );
 }
