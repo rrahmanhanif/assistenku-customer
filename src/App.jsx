@@ -1,3 +1,4 @@
+import { listenCustomerNotification } from "./modules/notification";
 import 'leaflet/dist/leaflet.css';
 import React, { useEffect } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
@@ -36,6 +37,20 @@ export default function App() {
 
       {/* LOGIN */}
       <Route path="/login" element={<Login />} />
+
+      useEffect(() => {
+  if (!loggedIn) return;
+
+  const customerId = localStorage.getItem("customer_id");
+
+  const unsubNotif = listenCustomerNotification(customerId, (notif) => {
+    alert("Pesan baru dari Mitra: " + notif.message);
+  });
+
+  return () => {
+    unsubNotif.unsubscribe();
+  };
+}, [loggedIn]);
 
       {/* PROFILE */}
       <Route
