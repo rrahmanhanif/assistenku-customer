@@ -1,6 +1,16 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
+import { validatePhone } from "../utils/validator";
+
+const submitLogin = async () => {
+  if (!validatePhone(phone)) {
+    alert("Nomor HP tidak valid");
+    return;
+  }
+
+  // proses login lanjut…
+};
 
 export default function Login() {
   const [email, setEmail] = useState('')
