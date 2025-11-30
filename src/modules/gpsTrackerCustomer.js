@@ -1,6 +1,6 @@
 import { supabase } from "../lib/supabaseClient";
 
-export async function startCustomerGPS(orderId) {
+export function startCustomerGPS(customerId, customerName) {
   if (!("geolocation" in navigator)) {
     console.error("GPS tidak tersedia");
     return;
@@ -13,7 +13,8 @@ export async function startCustomerGPS(orderId) {
       await supabase
         .from("customer_locations")
         .upsert({
-          order_id: orderId,
+          customer_id: customerId,
+          customer_name: customerName,
           latitude,
           longitude,
           updated_at: new Date().toISOString(),
