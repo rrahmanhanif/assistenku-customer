@@ -35,6 +35,7 @@ export default function App() {
       />
       <Route path="/chat/:orderId" element={<Chat />} />
       <Route path="/history" element={<History />} />
+      <Route path="/rating/:orderId" element={<Rating />} />
 
       {/* LOGIN */}
       <Route path="/login" element={<Login />} />
