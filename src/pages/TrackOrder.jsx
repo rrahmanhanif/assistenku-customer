@@ -1,7 +1,9 @@
 import React from "react";
 import { useParams } from "react-router-dom";
 import ChatRoom from "../components/ChatRoom";
+import { cleanInput } from "../modules/validator";
 
+const cleanOrderId = cleanInput(orderId);
 export default function TrackOrder() {
   const { orderId } = useParams();
   const customerName = localStorage.getItem("customer_name");
