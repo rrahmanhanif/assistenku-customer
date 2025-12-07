@@ -1,22 +1,28 @@
 // src/modules/gpsTrackerCustomer.js
-import supabase from "../lib/supabaseClient";
+
+import { supabase } from "../lib/supabaseClient";
 
 /**
  * Ambil data GPS dari database (untuk tracking mitra)
  */
 export const getGpsLocation = async (orderId) => {
-  const { data, error } = await supabase
-    .from("gps_tracking")
-    .select("*")
-    .eq("order_id", orderId)
-    .single();
+  try {
+    const { data, error } = await supabase
+      .from("gps_tracking")
+      .select("*")
+      .eq("order_id", orderId)
+      .single();
 
-  if (error) {
-    console.error("GPS Error:", error);
+    if (error) {
+      console.error("GPS Error:", error);
+      return null;
+    }
+
+    return data;
+  } catch (err) {
+    console.error("GPS Fetch Error:", err);
     return null;
   }
-
-  return data;
 };
 
 /**
@@ -32,36 +38,48 @@ export const startCustomerLiveGps = (customerId, customerName) => {
 
   const watchId = navigator.geolocation.watchPosition(
     async (pos) => {
-      const now = Date.now();
-      if (now - lastSend < 10000) return; // kirim setiap 10 detik
-      lastSend = now;
+      try {
+        const now = Date.now();
+        if (now - lastSend < 10000) return; // kirim setiap 10 detik
+        lastSend = now;
 
-      const { latitude, longitude } = pos.coords;
+        const { latitude, longitude } = pos.coords;
 
-      const { error } = await supabase.from("realtime_gps").upsert(
-        {
-          user_id: customerId,
-          name: customerName,
-          role: "customer",
-          lat: latitude,
-          lng: longitude,
-          updated_at: new Date().toISOString()
-        },
-        { onConflict: "user_id" }
-      );
+        const { error } = await supabase.from("realtime_gps").upsert(
+          {
+            user_id: customerId,
+            name: customerName,
+            role: "customer",
+            lat: latitude,
+            lng: longitude,
+            updated_at: new Date().toISOString()
+          },
+          { onConflict: "user_id" }
+        );
 
-      if (error) console.error("SUPABASE ERROR:", error);
+        if (error) {
+          console.error("SUPABASE ERROR:", error);
+        }
+      } catch (err) {
+        console.error("GPS UPDATE ERROR:", err);
+      }
     },
     (err) => console.error("GPS ERROR:", err),
     { enableHighAccuracy: true }
   );
 
-  return watchId; // bisa untuk stopTracking()
+  return watchId; // untuk stopTracking()
 };
 
 /**
  * Stop GPS tracking
  */
 export const stopCustomerLiveGps = (watchId) => {
-  if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+  try {
+    if (watchId !== null) {
+      navigator.geolocation.clearWatch(watchId);
+    }
+  } catch (err) {
+    console.error("STOP GPS ERROR:", err);
+  }
 };
