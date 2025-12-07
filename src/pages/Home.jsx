@@ -1,6 +1,6 @@
 // src/pages/Home.jsx
 import React, { useState } from "react";
-import { createOrder } from "../lib/orderService"; // FIX: file yg benar
+import { createOrder } from "../lib/order"; // FIX: path benar
 
 export default function Home() {
   const customer_id = localStorage.getItem("customer_id");
@@ -22,7 +22,7 @@ export default function Home() {
       const newOrder = await createOrder({
         customer_id,
         customer_name,
-        total_price: 50000,
+        total_price: 50000, // default sementara
       });
 
       if (!newOrder) {
@@ -33,9 +33,10 @@ export default function Home() {
 
       setMessage("Pesanan berhasil dibuat! Order ID: " + newOrder.id);
 
+      // Redirect ke halaman tracking
       window.location.href = `/track/${newOrder.id}`;
     } catch (err) {
-      console.error(err);
+      console.error("Error create order:", err);
       setMessage("Terjadi kesalahan.");
     }
 
