@@ -1,17 +1,17 @@
 // src/lib/orderService.js
-import { supabase } from "./supabase";
+import { supabase } from "./supabaseClient";
 
-export async function createOrder(data) {
-  const { data: insertData, error } = await supabase
+export const getOrdersByCustomer = async (customerId) => {
+  const { data, error } = await supabase
     .from("orders")
-    .insert([data])
-    .select()
-    .single();
+    .select("*")
+    .eq("customer_id", customerId)
+    .order("created_at", { ascending: false });
 
   if (error) {
-    console.error("Error creating order:", error);
-    return null;
+    console.error("OrderService Error:", error);
+    return [];
   }
 
-  return insertData;
-}
+  return data;
+};
