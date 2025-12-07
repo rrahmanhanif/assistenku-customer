@@ -1,83 +1,27 @@
 // src/lib/order.js
-import { supabase } from "./supabaseClient";
+import supabase from "./supabaseClient";
 
 /**
- * Membuat order baru untuk customer
- * @param {Object} payload 
- * { customer_id, customer_name, total_price }
+ * Membuat order baru di tabel 'orders'
+ * @param {Object} data - Data pesanan
+ * @returns {Object|null} - Data order baru atau null jika gagal
  */
-export async function createOrder(payload) {
+export async function createOrder(data) {
   try {
-    const { data, error } = await supabase
+    const { data: newOrder, error } = await supabase
       .from("orders")
-      .insert({
-        customer_id: payload.customer_id,
-        customer_name: payload.customer_name,
-        total_price: payload.total_price,
-        status: "waiting",
-        created_at: new Date().toISOString(),
-      })
+      .insert([data])
       .select()
       .single();
 
     if (error) {
-      console.error("❌ Error createOrder:", error);
+      console.error("ERROR:createOrder =>", error);
       return null;
     }
 
-    return data;
+    return newOrder;
   } catch (err) {
-    console.error("❌ Fatal error createOrder:", err);
-    return null;
-  }
-}
-
-/**
- * Ambil detail order berdasarkan ID
- */
-export async function getOrderById(orderId) {
-  try {
-    const { data, error } = await supabase
-      .from("orders")
-      .select("*")
-      .eq("id", orderId)
-      .single();
-
-    if (error) {
-      console.error("❌ Error getOrderById:", error);
-      return null;
-    }
-
-    return data;
-  } catch (err) {
-    console.error("❌ Fatal error getOrderById:", err);
-    return null;
-  }
-}
-
-/**
- * Update status order
- */
-export async function updateOrderStatus(orderId, newStatus) {
-  try {
-    const { data, error } = await supabase
-      .from("orders")
-      .update({
-        status: newStatus,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", orderId)
-      .select()
-      .single();
-
-    if (error) {
-      console.error("❌ Error updateOrderStatus:", error);
-      return null;
-    }
-
-    return data;
-  } catch (err) {
-    console.error("❌ Fatal error updateOrderStatus:", err);
+    console.error("FATAL ERROR:createOrder =>", err);
     return null;
   }
 }
