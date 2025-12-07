@@ -83,3 +83,9 @@ export const stopCustomerLiveGps = (watchId) => {
     console.error("STOP GPS ERROR:", err);
   }
 };
+
+/**
+ * ALIAS untuk kompatibilitas dengan App.jsx
+ * Agar tidak perlu edit file lain
+ */
+export const startCustomerGPS = startCustomerLiveGps;
