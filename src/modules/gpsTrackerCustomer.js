@@ -1,12 +1,20 @@
-import supabase from "../lib/supabaseClient";
+// src/modules/gpsTrackerCustomer.js
+import { supabase } from "../lib/supabaseClient";
 
-let lastSend = 0;
+export const getGpsLocation = async (orderId) => {
+  const { data, error } = await supabase
+    .from("gps_tracking")
+    .select("*")
+    .eq("order_id", orderId)
+    .single();
 
-export function startCustomerGPS(customerId, customerName) {
-  if (!navigator.geolocation) {
-    console.error("GPS not supported");
-    return;
+  if (error) {
+    console.error("GPS Error:", error);
+    return null;
   }
+
+  return data;
+};
 
   navigator.geolocation.watchPosition(
     async (pos) => {
