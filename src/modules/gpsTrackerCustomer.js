@@ -1,6 +1,6 @@
 import supabase from "../lib/supabaseClient";
 
-let lastSend = 0; // anti-spam
+let lastSend = 0;
 
 export function startCustomerGPS(customerId, customerName) {
   if (!navigator.geolocation) {
@@ -11,26 +11,26 @@ export function startCustomerGPS(customerId, customerName) {
   navigator.geolocation.watchPosition(
     async (pos) => {
       const now = Date.now();
-
-      // ⛔ Anti-spam: kirim minimal 10 detik sekali
       if (now - lastSend < 10000) return;
       lastSend = now;
 
       const { latitude, longitude } = pos.coords;
 
-      await supabase.from("realtime_gps").upsert(
+      const { error } = await supabase.from("realtime_gps").upsert(
         {
           user_id: customerId,
           name: customerName,
           role: "customer",
           lat: latitude,
           lng: longitude,
-          updated_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
         },
         { onConflict: "user_id" }
       );
+
+      if (error) console.error("SUPABASE ERROR:", error);
     },
-    (err) => console.error("GPS error:", err),
+    (err) => console.error("GPS ERROR:", err),
     { enableHighAccuracy: true }
   );
 }
