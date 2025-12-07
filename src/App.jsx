@@ -1,31 +1,60 @@
-import { listenCustomerNotification } from "./modules/notification";
-import 'leaflet/dist/leaflet.css';
+// src/App.jsx
 import React, { useEffect } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
+import 'leaflet/dist/leaflet.css';
 
 import Login from "./pages/Login";
 import Home from "./pages/Home";
 import Profile from "./pages/Profile";
-import TrackOrder from "./pages/TrackOrder"; // fitur tracking MITRA
+import TrackOrder from "./pages/TrackOrder";
 
+import Chat from "./pages/Chat";
+import History from "./pages/History";
+import Rating from "./pages/Rating";
+
+import { listenCustomerNotification } from "./modules/notification";
 import { startCustomerGPS } from "./modules/gpsTrackerCustomer";
 
 export default function App() {
   const loggedIn = localStorage.getItem("customer_auth") === "true";
 
+  // ================================
+  // GPS AUTO START
+  // ================================
   useEffect(() => {
     if (!loggedIn) return;
 
-    // Ambil ID customer
     const customerId = localStorage.getItem("customer_id");
     const customerName = localStorage.getItem("customer_name");
 
     if (customerId && customerName) {
-      // Aktifkan GPS customer
       startCustomerGPS(customerId, customerName);
     }
   }, [loggedIn]);
 
+  // ================================
+  // NOTIFICATION LISTENER
+  // ================================
+  useEffect(() => {
+    if (!loggedIn) return;
+
+    const customerId = localStorage.getItem("customer_id");
+    if (!customerId) return;
+
+    const unsubNotif = listenCustomerNotification(customerId, (notif) => {
+      alert("Pesan baru dari Mitra: " + notif.message);
+    });
+
+    return () => {
+      try {
+        unsubNotif.unsubscribe();
+      } catch {}
+    };
+  }, [loggedIn]);
+
+  // ================================
+  // ROUTING
+  // ================================
   return (
     <Routes>
       {/* HOME */}
@@ -33,26 +62,27 @@ export default function App() {
         path="/"
         element={loggedIn ? <Home /> : <Navigate to="/login" />}
       />
-      <Route path="/chat/:orderId" element={<Chat />} />
-      <Route path="/history" element={<History />} />
-      <Route path="/rating/:orderId" element={<Rating />} />
+
+      {/* CHAT */}
+      <Route
+        path="/chat/:orderId"
+        element={loggedIn ? <Chat /> : <Navigate to="/login" />}
+      />
+
+      {/* HISTORY */}
+      <Route
+        path="/history"
+        element={loggedIn ? <History /> : <Navigate to="/login" />}
+      />
+
+      {/* RATING */}
+      <Route
+        path="/rating/:orderId"
+        element={loggedIn ? <Rating /> : <Navigate to="/login" />}
+      />
 
       {/* LOGIN */}
       <Route path="/login" element={<Login />} />
-
-      useEffect(() => {
-  if (!loggedIn) return;
-
-  const customerId = localStorage.getItem("customer_id");
-
-  const unsubNotif = listenCustomerNotification(customerId, (notif) => {
-    alert("Pesan baru dari Mitra: " + notif.message);
-  });
-
-  return () => {
-    unsubNotif.unsubscribe();
-  };
-}, [loggedIn]);
 
       {/* PROFILE */}
       <Route
