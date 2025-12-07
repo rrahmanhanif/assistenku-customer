@@ -1,63 +1,41 @@
-import React, { useState } from "react";
-import "../styles/login.css";
-import { loginCustomer } from "../modules/authCustomer";
+import { useState } from "react";
+import { supabase } from "../lib/supabase";
+import "../styles/login.css"; // Pastikan file ini ada
 
-export default function Login() {
+function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  
-  // HONEYPOT FIELD (bot biasanya selalu mengisi ini)
-  const [hp, setHp] = useState("");
 
-  async function handleLogin(e) {
+  const handleLogin = async (e) => {
     e.preventDefault();
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
 
-    // Jika bot mengisi honeypot → langsung blok
-    if (hp !== "") {
-      alert("Bot terdeteksi. Login ditolak.");
-      return;
-    }
-
-    if (!email || !password) {
-      alert("Email dan password tidak boleh kosong!");
-      return;
-    }
-
-    const result = await loginCustomer(email, password);
-
-    if (result.success) {
-      window.location.href = "/";
+    if (error) {
+      alert("Login gagal: " + error.message);
     } else {
-      alert(result.message);
+      window.location.href = "/dashboard";
     }
-  }
+  };
 
   return (
     <div className="login-container">
+      <h2>Masuk ke Assistenku</h2>
       <form onSubmit={handleLogin}>
-
-        <h2>Login Customer</h2>
-
         <input
           type="email"
-          placeholder="Email Anda"
+          placeholder="Email..."
           value={email}
           onChange={(e) => setEmail(e.target.value)}
         />
 
         <input
           type="password"
-          placeholder="Password Anda"
+          placeholder="Password..."
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-        />
-
-        {/* HONEYPOT — disembunyikan dari manusia */}
-        <input
-          type="text"
-          value={hp}
-          onChange={(e) => setHp(e.target.value)}
-          style={{ display: "none" }}
         />
 
         <button type="submit">Masuk</button>
@@ -65,3 +43,5 @@ export default function Login() {
     </div>
   );
 }
+
+export default Login;
