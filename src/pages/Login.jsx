@@ -1,47 +1,41 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { supabase } from "../lib/supabase";
-import "../styles/login.css"; // Pastikan file ini ada
 
-function Login() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+export default function Login() {
+  const [name, setName] = useState("");
 
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+  async function handleLogin() {
+    if (!name) return alert("Masukkan nama terlebih dahulu");
 
-    if (error) {
-      alert("Login gagal: " + error.message);
-    } else {
-      window.location.href = "/dashboard";
-    }
-  };
+    localStorage.setItem("customer_name", name);
+    localStorage.setItem("customer_id", Date.now().toString());
+
+    window.location.href = "/";
+  }
 
   return (
-    <div className="login-container">
-      <h2>Masuk ke Assistenku</h2>
-      <form onSubmit={handleLogin}>
-        <input
-          type="email"
-          placeholder="Email..."
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
+    <div style={{ padding: 20 }}>
+      <h2>Login Customer</h2>
 
-        <input
-          type="password"
-          placeholder="Password..."
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
+      <input
+        placeholder="Nama Anda"
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        style={{ padding: 10, width: "100%", marginBottom: 10 }}
+      />
 
-        <button type="submit">Masuk</button>
-      </form>
+      <button
+        onClick={handleLogin}
+        style={{
+          padding: 12,
+          width: "100%",
+          background: "#007bff",
+          color: "white",
+          borderRadius: 8,
+        }}
+      >
+        Login
+      </button>
     </div>
   );
 }
-
-export default Login;
