@@ -1,7 +1,7 @@
 // src/App.jsx
 import React, { useEffect } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
-import 'leaflet/dist/leaflet.css';
+import "leaflet/dist/leaflet.css";
 
 import Login from "./pages/Login";
 import Home from "./pages/Home";
@@ -18,9 +18,9 @@ import { startCustomerGPS } from "./modules/gpsTrackerCustomer";
 export default function App() {
   const loggedIn = localStorage.getItem("customer_auth") === "true";
 
-  // ================================
-  // GPS AUTO START
-  // ================================
+  // =====================================
+  // AUTO START GPS CUSTOMER
+  // =====================================
   useEffect(() => {
     if (!loggedIn) return;
 
@@ -32,9 +32,9 @@ export default function App() {
     }
   }, [loggedIn]);
 
-  // ================================
+  // =====================================
   // NOTIFICATION LISTENER
-  // ================================
+  // =====================================
   useEffect(() => {
     if (!loggedIn) return;
 
@@ -52,9 +52,9 @@ export default function App() {
     };
   }, [loggedIn]);
 
-  // ================================
-  // ROUTING
-  // ================================
+  // =====================================
+  // ROUTES
+  // =====================================
   return (
     <Routes>
       {/* HOME */}
@@ -75,14 +75,11 @@ export default function App() {
         element={loggedIn ? <History /> : <Navigate to="/login" />}
       />
 
-      {/* RATING */}
+      {/* RATING (Fix) */}
       <Route
         path="/rating/:orderId"
         element={loggedIn ? <Rating /> : <Navigate to="/login" />}
       />
-
-      {/* LOGIN */}
-      <Route path="/login" element={<Login />} />
 
       {/* PROFILE */}
       <Route
@@ -95,6 +92,9 @@ export default function App() {
         path="/track/:orderId"
         element={loggedIn ? <TrackOrder /> : <Navigate to="/login" />}
       />
+
+      {/* LOGIN */}
+      <Route path="/login" element={<Login />} />
     </Routes>
   );
-}
+      }
