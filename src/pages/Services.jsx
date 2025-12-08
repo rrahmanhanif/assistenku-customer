@@ -1,62 +1,92 @@
 // src/pages/Services.jsx
 import React, { useEffect, useState } from "react";
-import { getAllServices } from "../lib/services";
+import { supabase } from "../lib/supabase";
+import { createOrder } from "../lib/order";
+import { useNavigate } from "react-router-dom";
 
 export default function Services() {
   const [services, setServices] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
+
+  const customer_id = localStorage.getItem("customer_id");
+  const customer_name = localStorage.getItem("customer_name");
+
+  // ================================================
+  // FETCH ALL ACTIVE SERVICES
+  // ================================================
+  async function loadServices() {
+    const { data, error } = await supabase
+      .from("services")
+      .select("*")
+      .eq("active", true)
+      .order("category", { ascending: true });
+
+    if (data) setServices(data);
+  }
 
   useEffect(() => {
-    async function load() {
-      const data = await getAllServices();
-      setServices(data);
-    }
-    load();
+    loadServices();
   }, []);
 
+  // ================================================
+  // HANDLE ORDER CREATION
+  // ================================================
+  async function handleOrder(service) {
+    if (loading) return;
+
+    setLoading(true);
+
+    try {
+      const order = await createOrder({
+        customer_id,
+        customer_name,
+        service_id: service.id,
+        service_name: service.name,
+        base_price: service.base_price,
+        total_price: service.base_price, // default tanpa tambahan
+      });
+
+      if (!order) {
+        alert("Gagal membuat pesanan.");
+        setLoading(false);
+        return;
+      }
+
+      // Redirect ke tracking
+      navigate(`/track/${order.id}`);
+    } catch (err) {
+      console.error(err);
+      alert("Terjadi kesalahan.");
+    }
+
+    setLoading(false);
+  }
+
   return (
-    <div style={{ padding: 20 }}>
-      <h2>Layanan Assistenku</h2>
+    <div style={{ padding: "20px" }}>
+      <h2>Pilih Layanan</h2>
 
       {services.length === 0 && <p>Memuat layanan...</p>}
 
-      {services.map((s) => (
-        <div
-          key={s.id}
-          style={{
-            padding: "15px",
-            marginTop: "15px",
-            border: "1px solid #ddd",
-            borderRadius: "8px",
-          }}
-        >
-          <h3>{s.name}</h3>
-          <p>Kategori: {s.category}</p>
-
-          <p>
-            Harga dasar: <b>Rp {Number(s.base_price).toLocaleString()}</b>
-          </p>
-
-          <p>
-            Surge: <b>{s.surge_min}% – {s.surge_max}%</b>
-          </p>
-
-          <button
+      <div style={{ marginTop: "20px" }}>
+        {services.map((srv) => (
+          <div
+            key={srv.id}
             style={{
-              marginTop: "10px",
-              padding: "10px",
-              width: "100%",
-              background: "#0080ff",
-              color: "white",
-              borderRadius: "6px",
+              padding: "15px",
+              marginBottom: "12px",
+              border: "1px solid #ddd",
+              borderRadius: "10px",
+              cursor: "pointer",
             }}
-            onClick={() =>
-              window.location.href = `/order/create?service=${s.id}`
-            }
+            onClick={() => handleOrder(srv)}
           >
-            Pilih Layanan Ini
-          </button>
-        </div>
-      ))}
+            <h3 style={{ margin: 0 }}>{srv.name}</h3>
+            <small>{srv.category}</small>
+          </div>
+        ))}
+      </div>
     </div>
   );
-}
+              }
