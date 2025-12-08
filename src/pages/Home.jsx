@@ -1,15 +1,41 @@
 // src/pages/Home.jsx
-import React, { useState } from "react";
-import { createOrder } from "../lib/order"; // FIX: path benar
+import React, { useEffect, useState } from "react";
+import { supabase } from "../lib/supabaseClient";
+import { createOrder } from "../lib/order";
 
 export default function Home() {
   const customer_id = localStorage.getItem("customer_id");
   const customer_name = localStorage.getItem("customer_name");
 
   const [loading, setLoading] = useState(false);
+  const [services, setServices] = useState([]);
   const [message, setMessage] = useState("");
 
-  async function handleCreateOrder() {
+  // ----------------------------------------
+  // STEP 1 — Ambil layanan dari Supabase
+  // ----------------------------------------
+  useEffect(() => {
+    async function fetchServices() {
+      const { data, error } = await supabase
+        .from("services")
+        .select("*")
+        .eq("active", true)
+        .order("sort_order", { ascending: true });
+
+      if (error) {
+        console.error("Gagal load services:", error);
+        return;
+      }
+      setServices(data);
+    }
+
+    fetchServices();
+  }, []);
+
+  // ----------------------------------------
+  // STEP 2 — Membuat pesanan dari layanan tertentu
+  // ----------------------------------------
+  async function handleCreateOrder(service) {
     if (!customer_id || !customer_name) {
       setMessage("Login ulang diperlukan.");
       return;
@@ -22,7 +48,8 @@ export default function Home() {
       const newOrder = await createOrder({
         customer_id,
         customer_name,
-        total_price: 50000, // default sementara
+        service_id: service.id,
+        total_price: 0, // akan dihitung di halaman order detail
       });
 
       if (!newOrder) {
@@ -31,10 +58,8 @@ export default function Home() {
         return;
       }
 
-      setMessage("Pesanan berhasil dibuat! Order ID: " + newOrder.id);
-
-      // Redirect ke halaman tracking
-      window.location.href = `/track/${newOrder.id}`;
+      // Redirect ke halaman order detail
+      window.location.href = `/order/${newOrder.id}`;
     } catch (err) {
       console.error("Error create order:", err);
       setMessage("Terjadi kesalahan.");
@@ -46,23 +71,42 @@ export default function Home() {
   return (
     <div style={{ padding: "20px" }}>
       <h2>Selamat datang, {customer_name}</h2>
+      <p>Pilih layanan yang ingin Anda pesan:</p>
 
-      <button
-        onClick={handleCreateOrder}
-        disabled={loading}
-        style={{
-          padding: "12px",
-          width: "100%",
-          fontSize: "16px",
-          background: "#007bff",
-          color: "white",
-          borderRadius: "8px",
-        }}
-      >
-        {loading ? "Memproses..." : "Buat Pesanan Baru"}
-      </button>
+      {/* ----------------------------------------
+          LIST LAYANAN
+      ---------------------------------------- */}
+      {services.length === 0 ? (
+        <p>Layanan sedang dimuat...</p>
+      ) : (
+        <div style={{ marginTop: "20px" }}>
+          {services.map((srv) => (
+            <div
+              key={srv.id}
+              style={{
+                padding: "15px",
+                border: "1px solid #ddd",
+                marginBottom: "12px",
+                borderRadius: "10px",
+                cursor: "pointer",
+              }}
+              onClick={() => handleCreateOrder(srv)}
+            >
+              <h3 style={{ margin: 0 }}>{srv.name}</h3>
+              <p style={{ margin: "5px 0", color: "#666" }}>
+                {srv.short_description || "Layanan tersedia di wilayah Anda"}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
 
-      {message && <p style={{ marginTop: "15px" }}>{message}</p>}
+      {/* ----------------------------------------
+          MESSAGE
+      ---------------------------------------- */}
+      {message && (
+        <p style={{ marginTop: "15px", fontWeight: "bold" }}>{message}</p>
+      )}
     </div>
   );
 }
