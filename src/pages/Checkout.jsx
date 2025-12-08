@@ -1,105 +1,93 @@
 // src/pages/Checkout.jsx
+
 import React, { useEffect, useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
-import { useParams } from "react-router-dom";
+import { createOrder } from "../lib/order";
 
 export default function Checkout() {
-  const { orderId } = useParams();
+  const { serviceId } = useParams(); // ganti orderId → serviceId
+  const navigate = useNavigate();
 
-  const [order, setOrder] = useState(null);
-  const [paymentMethod, setPaymentMethod] = useState("qris");
+  const [service, setService] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  async function loadOrder() {
-    const { data } = await supabase
-      .from("orders")
-      .select("*")
-      .eq("id", orderId)
-      .single();
+  const customerId = localStorage.getItem("customer_id");
+  const customerName = localStorage.getItem("customer_name");
 
-    setOrder(data);
-  }
-
+  // Ambil detail layanan
   useEffect(() => {
-    loadOrder();
-  }, []);
+    async function loadService() {
+      const { data, error } = await supabase
+        .from("services")
+        .select("*")
+        .eq("id", serviceId)
+        .single();
 
-  async function handlePay() {
+      if (!error) setService(data);
+    }
+    loadService();
+  }, [serviceId]);
+
+  async function handleOrder() {
+    if (!service) return;
+
     setLoading(true);
 
-    // simulasi membuat kode pembayaran unik
-    const reference = "INV-" + Math.floor(Math.random() * 9999999);
+    const orderData = {
+      customer_id: customerId,
+      customer_name: customerName,
+      service_id: service.id,
+      service_name: service.name,
+      base_price: service.price,
+      total_price: service.price,
+      status: "MENUNGGU_KONFIRMASI", // sesuai system Level 8
+    };
 
-    const { error } = await supabase
-      .from("orders")
-      .update({
-        payment_method: paymentMethod,
-        payment_status: "PAID",
-        payment_reference: reference,
-        status: "MENUGGU_MITRA", // setelah bayar → order aktif
-      })
-      .eq("id", orderId);
+    const created = await createOrder(orderData);
+    setLoading(false);
 
-    if (error) {
-      alert("Gagal memproses pembayaran");
-      setLoading(false);
+    if (!created) {
+      alert("Gagal membuat pesanan");
       return;
     }
 
-    alert("Pembayaran sukses!");
-    window.location.href = `/track/${orderId}`;
+    navigate(`/track/${created.id}`);
   }
 
-  if (!order) return <p>Memuat...</p>;
+  if (!service) return <p>Memuat...</p>;
 
   return (
     <div style={{ padding: 20 }}>
-      <h2>Checkout</h2>
+      <h2>Checkout Layanan</h2>
 
       <div
         style={{
           padding: 15,
-          marginBottom: 20,
-          background: "#f1f1f1",
+          border: "1px solid #ccc",
           borderRadius: 8,
+          marginBottom: 20,
         }}
       >
-        <h3>{order.service_name}</h3>
-        <p>Durasi: {order.duration}</p>
-        <p>Total harga:</p>
-        <strong style={{ fontSize: 24 }}>
-          Rp {order.total_price.toLocaleString()}
-        </strong>
+        <p><b>Layanan:</b> {service.name}</p>
+        <p><b>Harga:</b> Rp {service.price.toLocaleString("id-ID")}</p>
       </div>
 
-      <h3>Metode Pembayaran</h3>
-      <select
-        value={paymentMethod}
-        onChange={(e) => setPaymentMethod(e.target.value)}
-        style={{ padding: 10, width: "100%", borderRadius: 10, marginBottom: 20 }}
-      >
-        <option value="qris">QRIS</option>
-        <option value="va_bca">Virtual Account BCA</option>
-        <option value="va_bri">Virtual Account BRI</option>
-        <option value="va_mandiri">Virtual Account Mandiri</option>
-        <option value="transfer_bank">Transfer Bank Manual</option>
-        <option value="cod">Cash on Delivery</option>
-      </select>
-
       <button
-        onClick={handlePay}
+        onClick={handleOrder}
         disabled={loading}
         style={{
-          padding: 15,
-          width: "100%",
-          borderRadius: 10,
           background: "#007bff",
           color: "white",
-          fontSize: 18,
+          padding: 15,
+          width: "100%",
+          borderRadius: 8,
+          border: "none",
+          fontSize: 16,
         }}
       >
-        {loading ? "Memproses..." : "Bayar Sekarang"}
+        {loading ? "Memproses..." : "Pesan Sekarang"}
       </button>
     </div>
   );
-        }
+}
