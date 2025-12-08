@@ -1,14 +1,15 @@
 // src/lib/order.js
+import { supabase } from "./supabase";
 
-import { supabase } from "./supabaseClient";
-
-// Ambil semua order berdasarkan userId
-export async function getOrders(userId) {
+/* ===============================
+   1. Ambil semua order milik customer
+   =============================== */
+export async function getOrders(customerId) {
   try {
     const { data, error } = await supabase
       .from("orders")
       .select("*")
-      .eq("userId", userId)
+      .eq("customer_id", customerId)
       .order("created_at", { ascending: false });
 
     if (error) throw error;
@@ -19,7 +20,9 @@ export async function getOrders(userId) {
   }
 }
 
-// Ambil detail satu order berdasarkan ID
+/* ===============================
+   2. Ambil detail order
+   =============================== */
 export async function getOrderById(orderId) {
   try {
     const { data, error } = await supabase
@@ -36,12 +39,31 @@ export async function getOrderById(orderId) {
   }
 }
 
-// Buat order baru
-export async function createOrder(orderData) {
+/* ===============================
+   3. Buat pesanan baru (Final versi 8.4)
+   =============================== */
+export async function createOrder(payload) {
   try {
     const { data, error } = await supabase
       .from("orders")
-      .insert(orderData)
+      .insert([
+        {
+          customer_id: payload.customer_id,
+          customer_name: payload.customer_name,
+
+          service_id: payload.service_id,
+          service_name: payload.service_name,
+
+          // Harga dibaca dari layanan
+          base_price: payload.base_price || 0,
+          surge_price: payload.surge_price || 0,
+          overtime_price: payload.overtime_price || 0,
+
+          total_price: payload.total_price,
+
+          status: "MENUNGGU_KONFIRMASI",
+        },
+      ])
       .select()
       .single();
 
@@ -53,7 +75,9 @@ export async function createOrder(orderData) {
   }
 }
 
-// Update order
+/* ===============================
+   4. Update order
+   =============================== */
 export async function updateOrder(orderId, updates) {
   try {
     const { data, error } = await supabase
@@ -71,7 +95,9 @@ export async function updateOrder(orderId, updates) {
   }
 }
 
-// Hapus order
+/* ===============================
+   5. Hapus order
+   =============================== */
 export async function deleteOrder(orderId) {
   try {
     const { error } = await supabase
@@ -85,4 +111,4 @@ export async function deleteOrder(orderId) {
     console.error("Error deleteOrder:", err);
     return false;
   }
-}
+            }
