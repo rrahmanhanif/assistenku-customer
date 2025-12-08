@@ -12,7 +12,7 @@ import Chat from "./pages/Chat";
 import History from "./pages/History";
 import Rating from "./pages/Rating";
 import Services from "./pages/Services";
-import Checkout from "./pages/Checkout";   // ✅ DITAMBAHKAN
+import Checkout from "./pages/Checkout";   // ✅ Sudah ditambahkan
 
 // Modules
 import { listenCustomerNotification } from "./modules/notification";
@@ -72,9 +72,9 @@ export default function App() {
         element={loggedIn ? <Services /> : <Navigate to="/login" />}
       />
 
-      {/* CHECKOUT — (NEW) */}
+      {/* CHECKOUT — FIX PARAM */}
       <Route
-        path="/checkout/:orderId"
+        path="/checkout/:serviceId"
         element={loggedIn ? <Checkout /> : <Navigate to="/login" />}
       />
 
@@ -112,4 +112,4 @@ export default function App() {
       <Route path="/login" element={<Login />} />
     </Routes>
   );
-        }
+      }
