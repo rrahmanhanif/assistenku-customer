@@ -3,16 +3,18 @@ import React, { useEffect } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import "leaflet/dist/leaflet.css";
 
+// Pages
 import Login from "./pages/Login";
 import Home from "./pages/Home";
 import Profile from "./pages/Profile";
 import TrackOrder from "./pages/TrackOrder";
-
 import Chat from "./pages/Chat";
 import History from "./pages/History";
 import Rating from "./pages/Rating";
-import Services from "./pages/Services"; // ✅ Tambahkan ini
+import Services from "./pages/Services";
+import Checkout from "./pages/Checkout";   // ✅ DITAMBAHKAN
 
+// Modules
 import { listenCustomerNotification } from "./modules/notification";
 import { startCustomerGPS } from "./modules/gpsTrackerCustomer";
 
@@ -34,7 +36,7 @@ export default function App() {
   }, [loggedIn]);
 
   // =====================================
-  // NOTIFICATION LISTENER
+  // REALTIME NOTIFICATION LISTENER
   // =====================================
   useEffect(() => {
     if (!loggedIn) return;
@@ -43,7 +45,7 @@ export default function App() {
     if (!customerId) return;
 
     const unsubNotif = listenCustomerNotification(customerId, (notif) => {
-      alert("Pesan baru dari Mitra: " + notif.message);
+      alert("Pesan Baru: " + notif.message);
     });
 
     return () => {
@@ -64,10 +66,16 @@ export default function App() {
         element={loggedIn ? <Home /> : <Navigate to="/login" />}
       />
 
-      {/* SERVICES — LAYANAN */}
+      {/* SERVICES */}
       <Route
         path="/services"
         element={loggedIn ? <Services /> : <Navigate to="/login" />}
+      />
+
+      {/* CHECKOUT — (NEW) */}
+      <Route
+        path="/checkout/:orderId"
+        element={loggedIn ? <Checkout /> : <Navigate to="/login" />}
       />
 
       {/* CHAT */}
