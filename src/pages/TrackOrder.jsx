@@ -1,19 +1,19 @@
 // src/pages/TrackOrder.jsx
 import React, { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
-import { subscribeOrderStatus } from "../lib/orderRealtime";
-import { subscribeMitraLocation } from "../modules/liveLocation";
+import { subscribeOrderStatus, subscribeMitraLocation } from "../lib/orderRealtime";
 
 export default function TrackOrder() {
   const { orderId } = useParams();
+  const navigate = useNavigate();
 
   const [order, setOrder] = useState(null);
   const [statusText, setStatusText] = useState("Memuat...");
 
-  // Fetch order pertama kali
+  // Fetch initial order
   async function loadOrder() {
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from("orders")
       .select("*")
       .eq("id", orderId)
@@ -28,47 +28,47 @@ export default function TrackOrder() {
   useEffect(() => {
     loadOrder();
 
-    // 🔵 1. Subscribe status order (realtime)
-    const statusSub = subscribeOrderStatus(orderId, (newData) => {
+    // Subscribe to realtime order status
+    const sub = subscribeOrderStatus(orderId, (newData) => {
       setOrder(newData);
       setStatusText(newData.status);
+
+      // AUTO REDIRECT to rating
+      if (newData.status === "FINISHED") {
+        setTimeout(() => {
+          navigate(`/rating/${orderId}`);
+        }, 700); // delay halus
+      }
     });
 
-    // 🔵 2. Subscribe GPS MITRA (jika mitra sudah assign)
-    let gpsSub = null;
-    let unsubscribe = () => {};
-
-    const intervalCheck = setInterval(() => {
-      if (order?.mitra_id && !gpsSub) {
-        gpsSub = subscribeMitraLocation(order.mitra_id, (loc) => {
-          setOrder((prev) => ({
-            ...prev,
-            mitra_lat: loc.lat,
-            mitra_lng: loc.lng,
-          }));
-        });
-
-        unsubscribe = () => supabase.removeChannel(gpsSub);
-      }
-    }, 1000);
-
     return () => {
-      clearInterval(intervalCheck);
-      supabase.removeChannel(statusSub);
-      unsubscribe();
+      supabase.removeChannel(sub);
     };
+  }, []);
+
+  // Subscribe GPS jika mitra_id sudah ada
+  useEffect(() => {
+    if (!order?.mitra_id) return;
+
+    const gpsSub = subscribeMitraLocation(order.mitra_id, (loc) => {
+      setOrder((prev) => ({
+        ...prev,
+        mitra_lat: loc.lat,
+        mitra_lng: loc.lng,
+      }));
+    });
+
+    return () => supabase.removeChannel(gpsSub);
   }, [order?.mitra_id]);
 
   return (
     <div style={{ padding: "20px" }}>
-      <h2>Status Pesanan #{orderId}</h2>
+      <h2>Status Pesanan</h2>
 
       <h3>{statusText}</h3>
 
       {order?.mitra_lat && (
-        <p>
-          Lokasi mitra: {order.mitra_lat}, {order.mitra_lng}
-        </p>
+        <p>Mitra bergerak: {order.mitra_lat}, {order.mitra_lng}</p>
       )}
     </div>
   );
