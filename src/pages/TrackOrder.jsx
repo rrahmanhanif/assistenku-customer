@@ -1,43 +1,50 @@
+// src/pages/TrackOrder.jsx
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import MapTracker from "../components/MapTracker";
-import { subscribeMitraLocation } from "../lib/realtimeMitra";
+import { supabase } from "../lib/supabase";
+import { subscribeOrderStatus } from "../lib/orderRealtime";
 
 export default function TrackOrder() {
   const { orderId } = useParams();
-  const [mitraPos, setMitraPos] = useState(null);
+
+  const [order, setOrder] = useState(null);
+  const [statusText, setStatusText] = useState("Memuat...");
+
+  // Fetch initial order
+  async function loadOrder() {
+    const { data, error } = await supabase
+      .from("orders")
+      .select("*")
+      .eq("id", orderId)
+      .single();
+
+    if (data) {
+      setOrder(data);
+      setStatusText(data.status);
+    }
+  }
 
   useEffect(() => {
-    // Subscribe realtime GPS MITRA
-    const channel = subscribeMitraLocation(orderId, (pos) => {
-      setMitraPos(pos);
+    loadOrder();
+
+    const sub = subscribeOrderStatus(orderId, (newData) => {
+      setOrder(newData);
+      setStatusText(newData.status);
     });
 
     return () => {
-      channel.unsubscribe();
+      supabase.removeChannel(sub);
     };
-  }, [orderId]);
+  }, []);
 
   return (
-    <div style={{ padding: 20 }}>
-      <h2>Tracking Pesanan #{orderId}</h2>
+    <div style={{ padding: "20px" }}>
+      <h2>Status Pesanan</h2>
 
-      {!mitraPos && <p>Menunggu lokasi mitra...</p>}
+      <h3>{statusText}</h3>
 
-      {mitraPos && (
-        <div>
-          <MapTracker mitraPosition={mitraPos} />
-
-          <p style={{ marginTop: 10 }}>
-            <strong>Lokasi Terakhir Mitra:</strong>  
-            <br />
-            Lat: {mitraPos.lat}
-            <br />
-            Lng: {mitraPos.lng}
-            <br />
-            Waktu: {new Date(mitraPos.time).toLocaleTimeString()}
-          </p>
-        </div>
+      {order?.mitra_lat && (
+        <p>Mitra bergerak: {order.mitra_lat}, {order.mitra_lng}</p>
       )}
     </div>
   );
