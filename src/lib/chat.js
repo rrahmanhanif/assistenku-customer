@@ -1,39 +1,65 @@
 // src/lib/chat.js
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "./supabase";
 
-export const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL,
-  import.meta.env.VITE_SUPABASE_KEY
-);
+// ------------------------------
+// SEND CHAT MESSAGE
+// ------------------------------
+export async function sendChatMessage(payload) {
+  const { data, error } = await supabase
+    .from("chat_messages")
+    .insert([
+      {
+        order_id: payload.order_id,
+        sender_type: payload.sender_type, // "customer" / "mitra"
+        sender_id: payload.sender_id,
+        message: payload.message,
+      },
+    ])
+    .select()
+    .single();
 
-// Kirim pesan
-export async function sendMessage(orderId, sender, message) {
-  const { error } = await supabase.from("messages").insert([
-    {
-      order_id: orderId,
-      sender,
-      message,
-      created_at: new Date(),
-    },
-  ]);
+  if (error) {
+    console.error("Send chat error:", error);
+    return null;
+  }
 
-  return !error;
+  return data;
 }
 
-// Subscribe pesan realtime
-export function subscribeChat(orderId, onMessage) {
+// ------------------------------
+// GET CHAT HISTORY
+// ------------------------------
+export async function getChat(orderId) {
+  const { data, error } = await supabase
+    .from("chat_messages")
+    .select("*")
+    .eq("order_id", orderId)
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    console.error("Get chat error:", error);
+    return [];
+  }
+
+  return data || [];
+}
+
+// ------------------------------
+// REALTIME CHAT LISTENER
+// ------------------------------
+export function subscribeChat(orderId, callback) {
   const channel = supabase
-    .channel(`chat_${orderId}`)
+    .channel(`chat_room_${orderId}`)
     .on(
       "postgres_changes",
       {
         event: "INSERT",
         schema: "public",
-        table: "messages",
+        table: "chat_messages",
         filter: `order_id=eq.${orderId}`,
       },
       (payload) => {
-        onMessage(payload.new);
+        if (payload.new) callback(payload.new);
       }
     )
     .subscribe();
