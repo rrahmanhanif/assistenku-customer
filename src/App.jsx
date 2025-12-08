@@ -11,6 +11,7 @@ import TrackOrder from "./pages/TrackOrder";
 import Chat from "./pages/Chat";
 import History from "./pages/History";
 import Rating from "./pages/Rating";
+import Services from "./pages/Services"; // ✅ Tambahkan ini
 
 import { listenCustomerNotification } from "./modules/notification";
 import { startCustomerGPS } from "./modules/gpsTrackerCustomer";
@@ -63,6 +64,12 @@ export default function App() {
         element={loggedIn ? <Home /> : <Navigate to="/login" />}
       />
 
+      {/* SERVICES — LAYANAN */}
+      <Route
+        path="/services"
+        element={loggedIn ? <Services /> : <Navigate to="/login" />}
+      />
+
       {/* CHAT */}
       <Route
         path="/chat/:orderId"
@@ -75,7 +82,7 @@ export default function App() {
         element={loggedIn ? <History /> : <Navigate to="/login" />}
       />
 
-      {/* RATING (Fix) */}
+      {/* RATING */}
       <Route
         path="/rating/:orderId"
         element={loggedIn ? <Rating /> : <Navigate to="/login" />}
@@ -87,7 +94,7 @@ export default function App() {
         element={loggedIn ? <Profile /> : <Navigate to="/login" />}
       />
 
-      {/* TRACK MITRA */}
+      {/* TRACK ORDER */}
       <Route
         path="/track/:orderId"
         element={loggedIn ? <TrackOrder /> : <Navigate to="/login" />}
@@ -97,4 +104,4 @@ export default function App() {
       <Route path="/login" element={<Login />} />
     </Routes>
   );
-      }
+        }
