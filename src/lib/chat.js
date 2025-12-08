@@ -1,29 +1,29 @@
-import supabase from "./supabaseClient";
+// src/lib/chat.js
+import { createClient } from "@supabase/supabase-js";
 
-let lastChat = 0; // anti spam chat
+export const supabase = createClient(
+  import.meta.env.VITE_SUPABASE_URL,
+  import.meta.env.VITE_SUPABASE_KEY
+);
 
+// Kirim pesan
 export async function sendMessage(orderId, sender, message) {
-  const now = Date.now();
-
-  if (now - lastChat < 3000) {
-    return { error: "Terlalu cepat, tunggu 3 detik." };
-  }
-
-  lastChat = now;
-
-  return await supabase.from("messages").insert([
+  const { error } = await supabase.from("messages").insert([
     {
       order_id: orderId,
       sender,
       message,
-      created_at: new Date().toISOString(),
+      created_at: new Date(),
     },
   ]);
+
+  return !error;
 }
 
-export function subscribeChat(orderId, callback) {
-  return supabase
-    .channel(`chat-${orderId}`)
+// Subscribe pesan realtime
+export function subscribeChat(orderId, onMessage) {
+  const channel = supabase
+    .channel(`chat_${orderId}`)
     .on(
       "postgres_changes",
       {
@@ -32,7 +32,11 @@ export function subscribeChat(orderId, callback) {
         table: "messages",
         filter: `order_id=eq.${orderId}`,
       },
-      (payload) => callback(payload.new)
+      (payload) => {
+        onMessage(payload.new);
+      }
     )
     .subscribe();
+
+  return channel;
 }
