@@ -1,29 +1,24 @@
-// src/pages/Chat.jsx
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { sendMessage, subscribeChat } from "../lib/chat";
+import { getChat, sendChatMessage, subscribeChat } from "../lib/chat";
 import { supabase } from "../lib/supabase";
 
 export default function Chat() {
   const { orderId } = useParams();
+
   const [messages, setMessages] = useState([]);
-  const [input, setInput] = useState("");
+  const [text, setText] = useState("");
 
-  // Load pesan awal
-  async function loadMessages() {
-    const { data } = await supabase
-      .from("messages")
-      .select("*")
-      .eq("order_id", orderId)
-      .order("created_at", { ascending: true });
+  const senderId = localStorage.getItem("customer_id");
 
-    setMessages(data || []);
-  }
-
+  // Load chat history
   useEffect(() => {
-    loadMessages();
+    async function load() {
+      const data = await getChat(orderId);
+      setMessages(data);
+    }
+    load();
 
-    // Realtime
     const channel = subscribeChat(orderId, (msg) => {
       setMessages((prev) => [...prev, msg]);
     });
@@ -32,60 +27,82 @@ export default function Chat() {
   }, []);
 
   async function handleSend() {
-    if (!input.trim()) return;
+    if (!text.trim()) return;
 
-    const sender = localStorage.getItem("customer_name");
+    await sendChatMessage({
+      order_id: orderId,
+      sender_type: "customer",
+      sender_id: senderId,
+      message: text,
+    });
 
-    await sendMessage(orderId, sender, input);
-    setInput("");
+    setText("");
   }
 
   return (
-    <div style={{ padding: "15px" }}>
-      <h3>Chat dengan Mitra</h3>
+    <div style={{ padding: 20 }}>
+      <h2>Chat dengan Mitra</h2>
 
       <div
         style={{
-          height: "60vh",
-          overflowY: "scroll",
-          padding: "10px",
+          height: "70vh",
+          overflowY: "auto",
           border: "1px solid #ddd",
-          marginBottom: "10px",
+          borderRadius: 8,
+          padding: 10,
+          marginTop: 15,
         }}
       >
-        {messages.map((m, i) => (
-          <div key={i} style={{ marginBottom: "8px" }}>
-            <b>{m.sender}</b> <br />
-            {m.message}
+        {messages.map((m) => (
+          <div
+            key={m.id}
+            style={{
+              marginBottom: 10,
+              textAlign: m.sender_type === "customer" ? "right" : "left",
+            }}
+          >
+            <div
+              style={{
+                display: "inline-block",
+                padding: 10,
+                background:
+                  m.sender_type === "customer" ? "#007bff" : "#cccccc",
+                color: "white",
+                borderRadius: 8,
+              }}
+            >
+              {m.message}
+            </div>
           </div>
         ))}
       </div>
 
-      <input
-        value={input}
-        onChange={(e) => setInput(e.target.value)}
-        placeholder="Tulis pesan..."
-        style={{
-          width: "100%",
-          padding: "10px",
-          border: "1px solid #ccc",
-          borderRadius: "6px",
-        }}
-      />
-
-      <button
-        onClick={handleSend}
-        style={{
-          marginTop: "10px",
-          padding: "12px",
-          background: "#007bff",
-          color: "white",
-          borderRadius: "8px",
-          width: "100%",
-        }}
-      >
-        Kirim
-      </button>
+      <div style={{ marginTop: 20 }}>
+        <input
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder="Ketik pesan..."
+          style={{
+            width: "75%",
+            padding: 10,
+            border: "1px solid #ccc",
+            borderRadius: 8,
+          }}
+        />
+        <button
+          onClick={handleSend}
+          style={{
+            width: "20%",
+            marginLeft: "5%",
+            padding: 10,
+            background: "#28a745",
+            color: "white",
+            borderRadius: 8,
+          }}
+        >
+          Kirim
+        </button>
+      </div>
     </div>
   );
 }
