@@ -2,91 +2,95 @@
 import React, { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { createOrder } from "../lib/order";
-import { useNavigate } from "react-router-dom";
 
 export default function Services() {
   const [services, setServices] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const navigate = useNavigate();
-
+  const [loading, setLoading] = useState(true);
   const customer_id = localStorage.getItem("customer_id");
   const customer_name = localStorage.getItem("customer_name");
 
-  // ================================================
-  // FETCH ALL ACTIVE SERVICES
-  // ================================================
+  // ============================
+  // FETCH SERVICES
+  // ============================
   async function loadServices() {
     const { data, error } = await supabase
       .from("services")
       .select("*")
-      .eq("active", true)
-      .order("category", { ascending: true });
+      .eq("active", true);
 
-    if (data) setServices(data);
+    if (error) console.error(error);
+    setServices(data || []);
+    setLoading(false);
   }
 
   useEffect(() => {
     loadServices();
   }, []);
 
-  // ================================================
-  // HANDLE ORDER CREATION
-  // ================================================
-  async function handleOrder(service) {
-    if (loading) return;
+  // ============================
+  // HANDLE SELECT SERVICE
+  // ============================
+  async function handleSelect(service) {
+    const base = service.base_price || 0;
+    const surge = service.default_surge || 0;
+    const overtime = 0;
 
-    setLoading(true);
+    const total = base + surge + overtime;
 
-    try {
-      const order = await createOrder({
-        customer_id,
-        customer_name,
-        service_id: service.id,
-        service_name: service.name,
-        base_price: service.base_price,
-        total_price: service.base_price, // default tanpa tambahan
-      });
+    const order = await createOrder({
+      customer_id,
+      customer_name,
+      service_id: service.id,
+      service_name: service.name,
+      base_price: base,
+      surge_price: surge,
+      overtime_price: overtime,
+      total_price: total,
+    });
 
-      if (!order) {
-        alert("Gagal membuat pesanan.");
-        setLoading(false);
-        return;
-      }
-
-      // Redirect ke tracking
-      navigate(`/track/${order.id}`);
-    } catch (err) {
-      console.error(err);
-      alert("Terjadi kesalahan.");
+    if (order) {
+      window.location.href = `/track/${order.id}`;
+    } else {
+      alert("Gagal membuat pesanan");
     }
+  }
 
-    setLoading(false);
+  if (loading) {
+    return (
+      <div style={{ padding: 20 }}>
+        <h2>Memuat layanan...</h2>
+      </div>
+    );
   }
 
   return (
-    <div style={{ padding: "20px" }}>
+    <div style={{ padding: 20 }}>
       <h2>Pilih Layanan</h2>
 
-      {services.length === 0 && <p>Memuat layanan...</p>}
+      {services.map((s) => (
+        <div
+          key={s.id}
+          onClick={() => handleSelect(s)}
+          style={{
+            padding: 15,
+            marginBottom: 10,
+            border: "1px solid #ddd",
+            borderRadius: 10,
+            cursor: "pointer",
+          }}
+        >
+          <h3>{s.name}</h3>
+          <p>{s.description}</p>
 
-      <div style={{ marginTop: "20px" }}>
-        {services.map((srv) => (
-          <div
-            key={srv.id}
-            style={{
-              padding: "15px",
-              marginBottom: "12px",
-              border: "1px solid #ddd",
-              borderRadius: "10px",
-              cursor: "pointer",
-            }}
-            onClick={() => handleOrder(srv)}
-          >
-            <h3 style={{ margin: 0 }}>{srv.name}</h3>
-            <small>{srv.category}</small>
-          </div>
-        ))}
-      </div>
+          <strong>
+            Harga Dasar: {s.base_price ? "Rp " + s.base_price.toLocaleString() : "-"}
+          </strong>
+
+          {s.default_surge > 0 && (
+            <p>Surge: Rp {s.default_surge.toLocaleString()}</p>
+          )}
+        </div>
+      ))}
     </div>
   );
-              }
+}
