@@ -1,47 +1,91 @@
+// src/pages/Chat.jsx
 import React, { useEffect, useState } from "react";
-import { sendMessage, subscribeChat } from "../modules/chat";
 import { useParams } from "react-router-dom";
+import { sendMessage, subscribeChat } from "../lib/chat";
+import { supabase } from "../lib/supabase";
 
 export default function Chat() {
   const { orderId } = useParams();
   const [messages, setMessages] = useState([]);
-  const [text, setText] = useState("");
+  const [input, setInput] = useState("");
+
+  // Load pesan awal
+  async function loadMessages() {
+    const { data } = await supabase
+      .from("messages")
+      .select("*")
+      .eq("order_id", orderId)
+      .order("created_at", { ascending: true });
+
+    setMessages(data || []);
+  }
 
   useEffect(() => {
-    const unsub = subscribeChat(orderId, (msg) => {
+    loadMessages();
+
+    // Realtime
+    const channel = subscribeChat(orderId, (msg) => {
       setMessages((prev) => [...prev, msg]);
     });
 
-    return () => unsub.unsubscribe();
+    return () => supabase.removeChannel(channel);
   }, []);
 
-  const send = async () => {
-    const sender = "customer";
-    if (!text.trim()) return;
+  async function handleSend() {
+    if (!input.trim()) return;
 
-    await sendMessage(orderId, sender, text);
-    setText("");
-  };
+    const sender = localStorage.getItem("customer_name");
+
+    await sendMessage(orderId, sender, input);
+    setInput("");
+  }
 
   return (
-    <div style={{ padding: 20 }}>
+    <div style={{ padding: "15px" }}>
       <h3>Chat dengan Mitra</h3>
-      <div style={{ marginBottom: 20 }}>
+
+      <div
+        style={{
+          height: "60vh",
+          overflowY: "scroll",
+          padding: "10px",
+          border: "1px solid #ddd",
+          marginBottom: "10px",
+        }}
+      >
         {messages.map((m, i) => (
-          <div key={i}>
-            <b>{m.sender}: </b> {m.message}
+          <div key={i} style={{ marginBottom: "8px" }}>
+            <b>{m.sender}</b> <br />
+            {m.message}
           </div>
         ))}
       </div>
 
       <input
-        value={text}
-        onChange={(e) => setText(e.target.value)}
+        value={input}
+        onChange={(e) => setInput(e.target.value)}
         placeholder="Tulis pesan..."
-        style={{ width: "70%" }}
+        style={{
+          width: "100%",
+          padding: "10px",
+          border: "1px solid #ccc",
+          borderRadius: "6px",
+        }}
       />
 
-      <button onClick={send}>Kirim</button>
+      <button
+        onClick={handleSend}
+        style={{
+          marginTop: "10px",
+          padding: "12px",
+          background: "#007bff",
+          color: "white",
+          borderRadius: "8px",
+          width: "100%",
+        }}
+      >
+        Kirim
+      </button>
     </div>
   );
 }
