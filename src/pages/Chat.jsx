@@ -1,3 +1,4 @@
+// src/pages/Chat.jsx (CUSTOMER)
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { getChat, sendChatMessage, subscribeChat } from "../lib/chat";
@@ -9,22 +10,25 @@ export default function Chat() {
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
 
-  const senderId = localStorage.getItem("customer_id");
+  const customerId = localStorage.getItem("customer_id");
 
-  // Load chat history
+  // Load chat + realtime
   useEffect(() => {
     async function load() {
       const data = await getChat(orderId);
       setMessages(data);
     }
+
     load();
 
     const channel = subscribeChat(orderId, (msg) => {
       setMessages((prev) => [...prev, msg]);
     });
 
-    return () => supabase.removeChannel(channel);
-  }, []);
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [orderId]);
 
   async function handleSend() {
     if (!text.trim()) return;
@@ -32,7 +36,7 @@ export default function Chat() {
     await sendChatMessage({
       order_id: orderId,
       sender_type: "customer",
-      sender_id: senderId,
+      sender_id: customerId,
       message: text,
     });
 
@@ -65,10 +69,11 @@ export default function Chat() {
               style={{
                 display: "inline-block",
                 padding: 10,
-                background:
-                  m.sender_type === "customer" ? "#007bff" : "#cccccc",
+                background: m.sender_type === "customer" ? "#007bff" : "#555",
                 color: "white",
                 borderRadius: 8,
+                maxWidth: "70%",
+                wordBreak: "break-word",
               }}
             >
               {m.message}
@@ -77,13 +82,13 @@ export default function Chat() {
         ))}
       </div>
 
-      <div style={{ marginTop: 20 }}>
+      <div style={{ marginTop: 20, display: "flex", gap: 10 }}>
         <input
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder="Ketik pesan..."
           style={{
-            width: "75%",
+            flex: 1,
             padding: 10,
             border: "1px solid #ccc",
             borderRadius: 8,
@@ -92,12 +97,12 @@ export default function Chat() {
         <button
           onClick={handleSend}
           style={{
-            width: "20%",
-            marginLeft: "5%",
+            width: "25%",
             padding: 10,
             background: "#28a745",
             color: "white",
             borderRadius: 8,
+            fontWeight: "bold",
           }}
         >
           Kirim
