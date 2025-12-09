@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { supabase } from "../lib/supabase";
+import { generateDeviceId } from "../lib/device";
 
 export default function Login() {
   const [name, setName] = useState("");
@@ -7,9 +8,24 @@ export default function Login() {
   async function handleLogin() {
     if (!name) return alert("Masukkan nama terlebih dahulu");
 
-    localStorage.setItem("customer_name", name);
-    localStorage.setItem("customer_id", Date.now().toString());
+    // Generate device ID
+    const deviceId = generateDeviceId();
 
+    // Generate customer_id (sesuai sistem lama kamu)
+    const customerId = Date.now().toString();
+
+    // Simpan ke localStorage
+    localStorage.setItem("customer_name", name);
+    localStorage.setItem("customer_id", customerId);
+    localStorage.setItem("device_id", deviceId);
+
+    // Simpan ke Supabase (TABEL customers)
+    await supabase
+      .from("customers")
+      .update({ device_id: deviceId })
+      .eq("id", customerId);
+
+    // Redirect
     window.location.href = "/";
   }
 
