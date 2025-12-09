@@ -2,7 +2,10 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
+
 import { subscribeOrderStatus, subscribeMitraLocation } from "../lib/orderRealtime";
+import { subscribeOvertime } from "../lib/overtimeRealtime";
+import { approveOvertime, rejectOvertime } from "../lib/overtime";
 
 export default function TrackOrder() {
   const { orderId } = useParams();
@@ -11,7 +14,7 @@ export default function TrackOrder() {
   const [order, setOrder] = useState(null);
   const [statusText, setStatusText] = useState("Memuat...");
 
-  // Fetch initial order
+  // ========= FETCH ORDER AWAL =========
   async function loadOrder() {
     const { data } = await supabase
       .from("orders")
@@ -28,24 +31,24 @@ export default function TrackOrder() {
   useEffect(() => {
     loadOrder();
 
-    // ====== REALTIME STATUS UPDATE ======
-    const sub = subscribeOrderStatus(orderId, (newData) => {
+    // ========= REALTIME STATUS =========
+    const subStatus = subscribeOrderStatus(orderId, (newData) => {
       setOrder(newData);
       setStatusText(newData.status);
 
-      // ====== AUTO REDIRECT KE RATING ======
-      if (newData.status === "completed") {
+      // AUTO REDIRECT SAAT SELESAI
+      if (newData.status === "FINISHED") {
         alert("Pekerjaan selesai! Silakan beri rating.");
         navigate(`/rating/${orderId}`);
       }
     });
 
     return () => {
-      supabase.removeChannel(sub);
+      supabase.removeChannel(subStatus);
     };
   }, []);
 
-  // ====== REALTIME GPS MITRA ======
+  // ========= REALTIME GPS MITRA =========
   useEffect(() => {
     if (!order?.mitra_id) return;
 
@@ -60,6 +63,31 @@ export default function TrackOrder() {
     return () => supabase.removeChannel(gpsSub);
   }, [order?.mitra_id]);
 
+  // ========= REALTIME OVERTIME =========
+  useEffect(() => {
+    if (!orderId) return;
+
+    const subOT = subscribeOvertime(orderId, async (req) => {
+      if (req.status === "PENDING") {
+        const agree = window.confirm(
+          `Mitra mengajukan overtime ${req.requested_minutes} menit\n` +
+          `Biaya tambahan: Rp ${req.total_price}\n\n` +
+          `Setujui?`
+        );
+
+        if (agree) {
+          await approveOvertime(req.id);
+          alert("Overtime disetujui!");
+        } else {
+          await rejectOvertime(req.id);
+          alert("Overtime ditolak.");
+        }
+      }
+    });
+
+    return () => supabase.removeChannel(subOT);
+  }, [orderId]);
+
   return (
     <div style={{ padding: "20px" }}>
       <h2>Status Pesanan</h2>
@@ -69,6 +97,13 @@ export default function TrackOrder() {
       {order?.mitra_lat && (
         <p>
           Mitra bergerak: {order.mitra_lat}, {order.mitra_lng}
+        </p>
+      )}
+
+      {order?.overtime_minutes > 0 && (
+        <p>
+          <b>Overtime: </b>
+          {order.overtime_minutes} menit (Rp {order.overtime_price})
         </p>
       )}
     </div>
