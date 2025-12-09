@@ -125,6 +125,18 @@ export default function OrderDetail() {
       <h2>Detail Layanan</h2>
       <h3>{service.name}</h3>
 
+      {/* STATUS PEMBAYARAN */}
+      <p>
+        Status Pembayaran:
+        <b style={{ color: order.payment_status === "PAID" ? "green" : "red" }}>
+          {order.payment_status}
+        </b>
+      </p>
+
+      {order.payment_method !== "none" && (
+        <p>Metode Pembayaran: <b>{order.payment_method}</b></p>
+      )}
+
       {/* DURASI */}
       <label>Durasi:</label>
       <select
@@ -181,4 +193,4 @@ export default function OrderDetail() {
       </button>
     </div>
   );
-}
+      }
