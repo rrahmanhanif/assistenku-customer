@@ -1,8 +1,9 @@
+// src/lib/paymentRealtime.js
 import { supabase } from "./supabase";
 
 export function subscribePayment(orderId, callback) {
-  return supabase
-    .channel("payment-" + orderId)
+  const channel = supabase
+    .channel(`payment_${orderId}`)
     .on(
       "postgres_changes",
       {
@@ -16,4 +17,6 @@ export function subscribePayment(orderId, callback) {
       }
     )
     .subscribe();
+
+  return channel;
 }
