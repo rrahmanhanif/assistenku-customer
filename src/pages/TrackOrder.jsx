@@ -28,16 +28,15 @@ export default function TrackOrder() {
   useEffect(() => {
     loadOrder();
 
-    // Subscribe to realtime order status
+    // ====== REALTIME STATUS UPDATE ======
     const sub = subscribeOrderStatus(orderId, (newData) => {
       setOrder(newData);
       setStatusText(newData.status);
 
-      // AUTO REDIRECT to rating
-      if (newData.status === "FINISHED") {
-        setTimeout(() => {
-          navigate(`/rating/${orderId}`);
-        }, 700); // delay halus
+      // ====== AUTO REDIRECT KE RATING ======
+      if (newData.status === "completed") {
+        alert("Pekerjaan selesai! Silakan beri rating.");
+        navigate(`/rating/${orderId}`);
       }
     });
 
@@ -46,7 +45,7 @@ export default function TrackOrder() {
     };
   }, []);
 
-  // Subscribe GPS jika mitra_id sudah ada
+  // ====== REALTIME GPS MITRA ======
   useEffect(() => {
     if (!order?.mitra_id) return;
 
@@ -68,7 +67,9 @@ export default function TrackOrder() {
       <h3>{statusText}</h3>
 
       {order?.mitra_lat && (
-        <p>Mitra bergerak: {order.mitra_lat}, {order.mitra_lng}</p>
+        <p>
+          Mitra bergerak: {order.mitra_lat}, {order.mitra_lng}
+        </p>
       )}
     </div>
   );
