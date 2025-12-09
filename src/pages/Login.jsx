@@ -2,6 +2,7 @@
 import React, { useState } from "react";
 import { supabase } from "../lib/supabase";
 import { generateDeviceId } from "../lib/device";
+import { saveCustomerToFirebase } from "../lib/firebaseSync";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -14,6 +15,7 @@ export default function Login() {
     setLoading(true);
     setError("");
 
+    // LOGIN via Supabase Auth
     const { data, error: loginErr } = await supabase.auth.signInWithPassword({
       email,
       password,
@@ -28,12 +30,20 @@ export default function Login() {
     const userId = data.user.id;
     const deviceId = await generateDeviceId();
 
-    // UPDATE DEVICE CUSTOMER
+    // UPDATE DEVICE CUSTOMER (Supabase)
     await supabase
       .from("profiles")
       .update({ device_id: deviceId })
       .eq("id", userId);
 
+    // SAVE TO FIREBASE (OTAK)
+    await saveCustomerToFirebase(userId, {
+      email,
+      device_id: deviceId,
+      last_login: Date.now(),
+    });
+
+    // LOCAL STORAGE
     localStorage.setItem("customer_id", userId);
     localStorage.setItem("customer_email", email);
     localStorage.setItem("customer_name", data.user.email.split("@")[0]);
