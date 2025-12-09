@@ -30,6 +30,7 @@ export default function TrackOrder() {
   }
 
   useEffect(() => {
+    if (!orderId) return;
     loadOrder();
 
     // ========= REALTIME STATUS =========
@@ -43,8 +44,10 @@ export default function TrackOrder() {
       }
     });
 
-    return () => supabase.removeChannel(subStatus);
-  }, []);
+    return () => {
+      supabase.removeChannel(subStatus);
+    };
+  }, [orderId]);
 
   // ========= REALTIME GPS MITRA =========
   useEffect(() => {
@@ -60,7 +63,6 @@ export default function TrackOrder() {
 
     return () => supabase.removeChannel(gpsSub);
   }, [order?.mitra_id]);
-
 
   // ========= REALTIME OVERTIME =========
   useEffect(() => {
@@ -87,9 +89,10 @@ export default function TrackOrder() {
     return () => supabase.removeChannel(subOT);
   }, [orderId]);
 
-
   // ========= REALTIME PAYMENT STATUS =========
   useEffect(() => {
+    if (!orderId) return;
+
     const subPay = subscribePayment(orderId, (updated) => {
       setOrder(updated);
 
@@ -100,7 +103,6 @@ export default function TrackOrder() {
 
     return () => supabase.removeChannel(subPay);
   }, [orderId]);
-
 
   return (
     <div style={{ padding: "20px" }}>
@@ -122,4 +124,4 @@ export default function TrackOrder() {
       )}
     </div>
   );
-          }
+              }
