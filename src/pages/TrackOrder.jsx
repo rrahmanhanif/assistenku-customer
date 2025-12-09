@@ -5,6 +5,7 @@ import { supabase } from "../lib/supabase";
 
 import { subscribeOrderStatus, subscribeMitraLocation } from "../lib/orderRealtime";
 import { subscribeOvertime } from "../lib/overtimeRealtime";
+import { subscribePayment } from "../lib/paymentRealtime";
 import { approveOvertime, rejectOvertime } from "../lib/overtime";
 
 export default function TrackOrder() {
@@ -36,16 +37,13 @@ export default function TrackOrder() {
       setOrder(newData);
       setStatusText(newData.status);
 
-      // AUTO REDIRECT SAAT SELESAI
       if (newData.status === "FINISHED") {
         alert("Pekerjaan selesai! Silakan beri rating.");
         navigate(`/rating/${orderId}`);
       }
     });
 
-    return () => {
-      supabase.removeChannel(subStatus);
-    };
+    return () => supabase.removeChannel(subStatus);
   }, []);
 
   // ========= REALTIME GPS MITRA =========
@@ -62,6 +60,7 @@ export default function TrackOrder() {
 
     return () => supabase.removeChannel(gpsSub);
   }, [order?.mitra_id]);
+
 
   // ========= REALTIME OVERTIME =========
   useEffect(() => {
@@ -88,6 +87,21 @@ export default function TrackOrder() {
     return () => supabase.removeChannel(subOT);
   }, [orderId]);
 
+
+  // ========= REALTIME PAYMENT STATUS =========
+  useEffect(() => {
+    const subPay = subscribePayment(orderId, (updated) => {
+      setOrder(updated);
+
+      if (updated.payment_status === "PAID") {
+        alert("Pembayaran diterima! Pesanan aktif.");
+      }
+    });
+
+    return () => supabase.removeChannel(subPay);
+  }, [orderId]);
+
+
   return (
     <div style={{ padding: "20px" }}>
       <h2>Status Pesanan</h2>
@@ -108,4 +122,4 @@ export default function TrackOrder() {
       )}
     </div>
   );
-}
+          }
