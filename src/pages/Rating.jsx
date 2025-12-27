@@ -1,6 +1,6 @@
 // src/pages/Rating.jsx
 import React, { useState } from "react";
-import supabase from "../lib/supabaseClient";
+import { supabase } from "../lib/supabase";
 import { useParams, useNavigate } from "react-router-dom";
 
 export default function Rating() {
@@ -20,68 +20,98 @@ export default function Rating() {
 
     setLoading(true);
 
-    // Ambil order untuk mengetahui mitra_id
-    const { data: orderData } = await supabase
-      .from("orders")
-      .select("mitra_id")
-      .eq("id", orderId)
-      .single();
+    try {
+      // Ambil order untuk mengetahui mitra_id
+      const { data: orderData, error: orderErr } = await supabase
+        .from("orders")
+        .select("mitra_id")
+        .eq("id", orderId)
+        .single();
 
-    if (!orderData?.mitra_id) {
-      alert("Mitra tidak ditemukan pada order ini.");
-      setLoading(false);
-      return;
+      if (orderErr || !orderData?.mitra_id) {
+        console.error("Gagal ambil mitra_id:", orderErr);
+        alert("Tidak dapat memuat data mitra untuk order ini.");
+        setLoading(false);
+        return;
+      }
+
+      // Simpan rating
+      // Catatan: pastikan tabel Anda sesuai (mis. "ratings" / "reviews")
+      const { error: insertErr } = await supabase.from("ratings").insert([
+        {
+          order_id: orderId,
+          customer_id,
+          mitra_id: orderData.mitra_id,
+          rating,
+          review,
+          created_at: new Date().toISOString(),
+        },
+      ]);
+
+      if (insertErr) {
+        console.error("Gagal simpan rating:", insertErr);
+        alert("Gagal mengirim rating. Coba lagi.");
+        setLoading(false);
+        return;
+      }
+
+      // Optional: update status order jadi selesai / rated (jika skema Anda mendukung)
+      await supabase
+        .from("orders")
+        .update({ status: "SELESAI", rated: true })
+        .eq("id", orderId);
+
+      alert("Terima kasih! Rating berhasil dikirim.");
+      navigate("/history");
+    } catch (err) {
+      console.error("submitRating error:", err);
+      alert("Terjadi kesalahan.");
     }
 
-    // Insert rating ke database
-    const { error } = await supabase.from("ratings").insert({
-      order_id: orderId,
-      mitra_id: orderData.mitra_id,
-      customer_id,
-      rating,
-      review,
-    });
-
-    if (error) {
-      console.error(error);
-      alert("Gagal mengirim rating.");
-      setLoading(false);
-      return;
-    }
-
-    alert("Rating berhasil dikirim!");
-    navigate("/history");
+    setLoading(false);
   }
 
   return (
-    <div style={{ padding: 20 }}>
-      <h2>Beri Rating untuk Mitra</h2>
+    <div style={{ padding: 20, maxWidth: 520, margin: "0 auto" }}>
+      <h2>Beri Rating</h2>
 
-      <div style={{ fontSize: "32px", marginBottom: "15px" }}>
+      <p style={{ marginTop: 10, marginBottom: 8 }}>Rating:</p>
+
+      <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
         {[1, 2, 3, 4, 5].map((n) => (
-          <span
+          <button
             key={n}
             onClick={() => setRating(n)}
             style={{
+              width: 44,
+              height: 44,
+              borderRadius: 10,
+              border: "1px solid #e5e7eb",
+              background: rating >= n ? "#f59e0b" : "white",
+              color: rating >= n ? "white" : "#111827",
               cursor: "pointer",
-              color: n <= rating ? "gold" : "#ccc",
+              fontSize: 18,
+              fontWeight: 700,
             }}
+            aria-label={`${n} bintang`}
           >
             ★
-          </span>
+          </button>
         ))}
       </div>
 
+      <p style={{ marginTop: 0, marginBottom: 8 }}>Ulasan (opsional):</p>
       <textarea
-        placeholder="Tulis ulasan (opsional)"
         value={review}
         onChange={(e) => setReview(e.target.value)}
+        placeholder="Tulis ulasan singkat..."
+        rows={4}
         style={{
           width: "100%",
-          height: "100px",
-          padding: "10px",
-          borderRadius: "8px",
-          border: "1px solid #ddd",
+          padding: 12,
+          borderRadius: 10,
+          border: "1px solid #d1d5db",
+          marginBottom: 16,
         }}
       />
 
@@ -89,13 +119,15 @@ export default function Rating() {
         onClick={submitRating}
         disabled={loading}
         style={{
-          marginTop: "20px",
-          padding: "12px",
           width: "100%",
-          borderRadius: "8px",
-          background: "#007bff",
+          padding: 14,
+          borderRadius: 10,
+          border: "none",
+          background: "#16a34a",
           color: "white",
-          fontSize: "16px",
+          fontSize: 16,
+          cursor: "pointer",
+          opacity: loading ? 0.7 : 1,
         }}
       >
         {loading ? "Mengirim..." : "Kirim Rating"}
