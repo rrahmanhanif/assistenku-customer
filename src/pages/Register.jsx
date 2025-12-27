@@ -9,11 +9,13 @@ export default function Register() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
   async function handleRegister(e) {
     e.preventDefault();
     setLoading(true);
     setError("");
+    setSuccess("");
 
     if (!email || !password || !name) {
       setError("Semua field wajib diisi");
@@ -29,6 +31,12 @@ export default function Register() {
 
     if (signUpErr) {
       setError(signUpErr.message);
+      setLoading(false);
+      return;
+    }
+
+    if (!data?.user) {
+      setError("Registrasi berhasil, cek email Anda untuk konfirmasi.");
       setLoading(false);
       return;
     }
@@ -49,7 +57,8 @@ export default function Register() {
     localStorage.setItem("device_id", deviceId);
     localStorage.setItem("customer_auth", "true");
 
-    alert("Registrasi berhasil! Anda sudah login.");
+    setLoading(false);
+    setSuccess("Registrasi berhasil! Anda sudah login.");
     window.location.href = "/";
   }
 
@@ -88,6 +97,7 @@ export default function Register() {
         />
 
         {error && <p className="text-red-500 text-sm mb-2">{error}</p>}
+        {success && <p className="text-green-600 text-sm mb-2">{success}</p>}
 
         <button
           type="submit"
