@@ -4,11 +4,25 @@ import { supabase } from "../lib/supabase";
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   async function handleSend() {
-    const { error } = await supabase.auth.resetPasswordForEmail(email);
+    setSent(false);
+    setError("");
+    setLoading(true);
 
-    if (!error) setSent(true);
+    const { error: resetError } = await supabase.auth.resetPasswordForEmail(
+      email
+    );
+
+    if (resetError) {
+      setError(resetError.message);
+    } else {
+      setSent(true);
+    }
+
+    setLoading(false);
   }
 
   return (
@@ -28,10 +42,15 @@ export default function ForgotPassword() {
 
         <button
           onClick={handleSend}
-          className="bg-blue-600 text-white w-full py-2 rounded"
+          disabled={loading}
+          className="bg-blue-600 text-white w-full py-2 rounded disabled:opacity-50"
         >
-          Kirim Link Reset
+          {loading ? "Mengirim..." : "Kirim Link Reset"}
         </button>
+
+        {error && (
+          <p className="text-red-500 mt-4 text-center text-sm">{error}</p>
+        )}
 
         {sent && (
           <p className="text-green-600 mt-4 text-center">
