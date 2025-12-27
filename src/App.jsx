@@ -1,9 +1,12 @@
 // src/App.jsx
 import React, { useEffect, useRef, useState } from "react";
-import { Routes, Route, Navigate, Outlet } from "react-router-dom";
+import { Routes, Route, Navigate, Outlet, useLocation } from "react-router-dom";
 import "leaflet/dist/leaflet.css";
 import { supabase } from "./lib/supabase";
 import useAuthGuard from "./hooks/useAuthGuard";
+
+// Layout
+import Layout from "./components/Layout";
 
 // Pages (Public)
 import Login from "./pages/Login";
@@ -98,12 +101,10 @@ export default function App() {
     });
 
     return () => {
-      // stop realtime listener
       try {
         unsubNotif.unsubscribe();
       } catch {}
 
-      // clear pending timeouts
       for (const t of timeoutsRef.current.values()) {
         clearTimeout(t);
       }
@@ -111,9 +112,6 @@ export default function App() {
     };
   }, [checking, loggedIn]);
 
-  // =====================================
-  // ROUTES
-  // =====================================
   return (
     <>
       {/* Toast container */}
@@ -152,17 +150,20 @@ export default function App() {
           path="/"
           element={<ProtectedRoute loggedIn={loggedIn} checking={checking} />}
         >
-          <Route index element={<Home />} />
-          <Route path="services" element={<Services />} />
+          {/* Layout wrapper hanya sekali */}
+          <Route element={<ProtectedShell />}>
+            <Route index element={<Home />} />
+            <Route path="services" element={<Services />} />
 
-          <Route path="order/:orderId" element={<OrderDetail />} />
-          <Route path="checkout/:orderId" element={<Checkout />} />
+            <Route path="order/:orderId" element={<OrderDetail />} />
+            <Route path="checkout/:orderId" element={<Checkout />} />
 
-          <Route path="chat/:orderId" element={<Chat />} />
-          <Route path="history" element={<History />} />
-          <Route path="rating/:orderId" element={<Rating />} />
-          <Route path="profile" element={<Profile />} />
-          <Route path="track/:orderId" element={<TrackOrder />} />
+            <Route path="chat/:orderId" element={<Chat />} />
+            <Route path="history" element={<History />} />
+            <Route path="rating/:orderId" element={<Rating />} />
+            <Route path="profile" element={<Profile />} />
+            <Route path="track/:orderId" element={<TrackOrder />} />
+          </Route>
         </Route>
 
         {/* Public Area */}
@@ -190,4 +191,33 @@ function ProtectedRoute({ loggedIn, checking }) {
   }
 
   return <Outlet />;
+}
+
+/**
+ * Shell untuk halaman protected:
+ * - Membungkus semua halaman dengan Layout
+ * - Set judul berdasarkan route
+ */
+function ProtectedShell() {
+  const location = useLocation();
+  const title = getTitleFromPath(location.pathname);
+
+  return (
+    <Layout title={title}>
+      <Outlet />
+    </Layout>
+  );
+}
+
+function getTitleFromPath(pathname) {
+  if (pathname === "/") return "Beranda";
+  if (pathname.startsWith("/services")) return "Layanan";
+  if (pathname.startsWith("/order/")) return "Detail Order";
+  if (pathname.startsWith("/checkout/")) return "Checkout";
+  if (pathname.startsWith("/chat/")) return "Chat";
+  if (pathname.startsWith("/history")) return "Riwayat";
+  if (pathname.startsWith("/rating/")) return "Rating";
+  if (pathname.startsWith("/profile")) return "Profil";
+  if (pathname.startsWith("/track/")) return "Lacak Pesanan";
+  return "Assistenku";
 }
