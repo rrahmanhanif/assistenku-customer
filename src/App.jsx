@@ -5,11 +5,12 @@ import "leaflet/dist/leaflet.css";
 import { supabase } from "./lib/supabase";
 import useAuthGuard from "./hooks/useAuthGuard";
 
-// Pages
+// Pages (Public)
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import ForgotPassword from "./pages/ForgotPassword";
 
+// Pages (Protected)
 import Home from "./pages/Home";
 import Profile from "./pages/Profile";
 import TrackOrder from "./pages/TrackOrder";
@@ -18,6 +19,7 @@ import History from "./pages/History";
 import Rating from "./pages/Rating";
 import Services from "./pages/Services";
 import Checkout from "./pages/Checkout";
+import OrderDetail from "./pages/OrderDetail";
 
 // Modules
 import { listenCustomerNotification } from "./modules/notification";
@@ -98,7 +100,11 @@ export default function App() {
       >
         <Route index element={<Home />} />
         <Route path="services" element={<Services />} />
-        <Route path="checkout/:serviceId" element={<Checkout />} />
+
+        {/* Perubahan sesuai patch lama */}
+        <Route path="order/:orderId" element={<OrderDetail />} />
+        <Route path="checkout/:orderId" element={<Checkout />} />
+
         <Route path="chat/:orderId" element={<Chat />} />
         <Route path="history" element={<History />} />
         <Route path="rating/:orderId" element={<Rating />} />
@@ -112,7 +118,10 @@ export default function App() {
       <Route path="/forgot-password" element={<ForgotPassword />} />
 
       {/* Fallback */}
-      <Route path="*" element={<Navigate to={loggedIn ? "/" : "/login"} replace />} />
+      <Route
+        path="*"
+        element={<Navigate to={loggedIn ? "/" : "/login"} replace />}
+      />
     </Routes>
   );
 }
