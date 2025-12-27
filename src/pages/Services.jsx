@@ -11,16 +11,13 @@ export default function Services() {
 
   const customer_id = localStorage.getItem("customer_id");
   const customer_name = localStorage.getItem("customer_name");
+  const customer_address = localStorage.getItem("customer_address") || "";
 
   // ============================
   // AMBIL LIST LAYANAN
   // ============================
   async function loadServices() {
-    const { data } = await supabase
-      .from("services")
-      .select("*")
-      .eq("active", true);
-
+    const { data } = await supabase.from("services").select("*").eq("active", true);
     setServices(data || []);
   }
 
@@ -34,20 +31,22 @@ export default function Services() {
   function calculateTotal() {
     if (!selected) return 0;
 
-    let base = selected.base_price;
+    // fallback aman: beberapa skema layanan punya field berbeda-beda
+    const base = selected.base_price ?? selected.price ?? 0;
 
-    // Durasi
-    const durationPrice = {
-      "1_jam": selected.price_hour,
-      "4_jam": selected.price_4h,
-      "8_jam": selected.price_day,
-      "1_minggu": selected.price_week,
-      "1_bulan": selected.price_month,
-      "1_tahun": selected.price_year,
-    }[duration] || selected.base_price;
+    const durationPrice =
+      {
+        "1_jam": selected.base_price ?? base,
+        "4_jam": selected.price_4h ?? base * 4,
+        "6_jam": selected.price_6h ?? base * 6,
+        "8_jam": selected.price_daily ?? base * 8,
+        mingguan: selected.price_week ?? base * 7,
+        bulanan: selected.price_month ?? base * 30,
+        "1_tahun": selected.price_year ?? base * 365,
+      }[duration] ?? base;
 
-    let surge = selected.default_surge || 0;
-    let overtime = includeOvertime ? selected.default_overtime : 0;
+    const surge = selected.default_surge || 0;
+    const overtime = includeOvertime ? selected.default_overtime : 0;
 
     return durationPrice + surge + overtime;
   }
@@ -63,10 +62,11 @@ export default function Services() {
     const order = await createOrder({
       customer_id,
       customer_name,
+      customer_address,
       service_id: selected.id,
       service_name: selected.name,
       duration: duration,
-      base_price: selected.base_price,
+      base_price: selected.base_price ?? selected.price ?? 0,
       total_price: totalPrice,
     });
 
@@ -75,7 +75,8 @@ export default function Services() {
       return;
     }
 
-    window.location.href = `/track/${order.id}`;
+    // Konsisten dengan flow terbaru: OrderDetail -> Checkout -> Track
+    window.location.href = `/order/${order.id}`;
   }
 
   // ============================
@@ -94,13 +95,17 @@ export default function Services() {
               padding: 15,
               border: "1px solid #ccc",
               borderRadius: 10,
-              marginBottom: 10,
+              marginBottom: 12,
               cursor: "pointer",
+              background: "white",
             }}
           >
-            <h3>{s.name}</h3>
-            <p>{s.description}</p>
-            <strong>Mulai dari Rp {s.base_price.toLocaleString()}</strong>
+            <h3 style={{ margin: 0 }}>{s.name}</h3>
+            {s.description && (
+              <p style={{ marginTop: 8, marginBottom: 0, color: "#374151" }}>
+                {s.description}
+              </p>
+            )}
           </div>
         ))}
       </div>
@@ -109,73 +114,87 @@ export default function Services() {
 
   return (
     <div style={{ padding: 20 }}>
+      <button
+        onClick={() => setSelected(null)}
+        style={{
+          marginBottom: 12,
+          padding: "10px 12px",
+          borderRadius: 10,
+          border: "1px solid #e5e7eb",
+          background: "white",
+          cursor: "pointer",
+        }}
+      >
+        ← Kembali
+      </button>
 
       <h2>{selected.name}</h2>
-      <p>{selected.description}</p>
 
-      {/* Durasi */}
-      <h3>Pilih Durasi</h3>
-      <select
-        value={duration}
-        onChange={(e) => setDuration(e.target.value)}
-        style={{ padding: 10, borderRadius: 8, width: "100%", marginBottom: 20 }}
-      >
-        <option value="1_jam">1 Jam</option>
-        <option value="4_jam">4 Jam</option>
-        <option value="8_jam">8 Jam (Harian)</option>
-        <option value="1_minggu">Mingguan</option>
-        <option value="1_bulan">Bulanan</option>
-        <option value="1_tahun">Tahunan</option>
-      </select>
+      <div style={{ marginTop: 12, marginBottom: 12 }}>
+        <label style={{ display: "block", marginBottom: 8 }}>Durasi</label>
+        <select
+          value={duration}
+          onChange={(e) => setDuration(e.target.value)}
+          style={{
+            width: "100%",
+            padding: 12,
+            borderRadius: 10,
+            border: "1px solid #d1d5db",
+            background: "white",
+          }}
+        >
+          <option value="1_jam">1 Jam</option>
+          <option value="4_jam">4 Jam</option>
+          <option value="6_jam">6 Jam</option>
+          <option value="8_jam">Harian (8 Jam)</option>
+          <option value="mingguan">Mingguan</option>
+          <option value="bulanan">Bulanan</option>
+          <option value="1_tahun">Tahunan</option>
+        </select>
+      </div>
 
-      {/* Lembur */}
-      <label style={{ display: "block", marginBottom: 20 }}>
+      <label style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <input
           type="checkbox"
           checked={includeOvertime}
-          onChange={() => setIncludeOvertime(!includeOvertime)}
+          onChange={(e) => setIncludeOvertime(e.target.checked)}
         />
-        &nbsp; Tambah lembur
+        Tambah lembur (default)
       </label>
 
-      <h3>Total Harga</h3>
       <div
         style={{
-          padding: 15,
-          background: "#eee",
-          borderRadius: 10,
-          marginBottom: 20,
-          fontSize: "20px",
+          marginTop: 16,
+          padding: 14,
+          borderRadius: 12,
+          border: "1px solid #e5e7eb",
+          background: "white",
         }}
       >
-        Rp {totalPrice.toLocaleString()}
+        <h3 style={{ marginTop: 0 }}>
+          Total: Rp {totalPrice.toLocaleString("id-ID")}
+        </h3>
+        <p style={{ margin: 0, color: "#6b7280" }}>
+          Total ini bersifat estimasi dan akan dikonfirmasi di checkout.
+        </p>
       </div>
 
       <button
         onClick={handleOrder}
         style={{
-          padding: 15,
+          marginTop: 16,
           width: "100%",
-          background: "#007bff",
+          padding: 14,
+          borderRadius: 10,
+          border: "none",
+          background: "#2563eb",
           color: "white",
-          fontSize: "18px",
-          borderRadius: 10,
+          fontSize: 16,
+          cursor: "pointer",
         }}
       >
-        Pesan Sekarang
-      </button>
-
-      <button
-        onClick={() => setSelected(null)}
-        style={{
-          padding: 10,
-          marginTop: 10,
-          width: "100%",
-          borderRadius: 10,
-        }}
-      >
-        Kembali
+        Buat Order
       </button>
     </div>
   );
-        }
+}
