@@ -1,11 +1,15 @@
 // src/App.jsx
 import React, { useEffect } from "react";
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, Outlet } from "react-router-dom";
 import "leaflet/dist/leaflet.css";
 import { supabase } from "./lib/supabase";
+import useAuthGuard from "./hooks/useAuthGuard";
 
 // Pages
 import Login from "./pages/Login";
+import Register from "./pages/Register";
+import ForgotPassword from "./pages/ForgotPassword";
+
 import Home from "./pages/Home";
 import Profile from "./pages/Profile";
 import TrackOrder from "./pages/TrackOrder";
@@ -20,7 +24,7 @@ import { listenCustomerNotification } from "./modules/notification";
 import { startCustomerGPS } from "./modules/gpsTrackerCustomer";
 
 export default function App() {
-  const loggedIn = localStorage.getItem("customer_auth") === "true";
+  const { loggedIn, checking } = useAuthGuard();
 
   // =====================================
   // DEVICE LOCK — CEK PERANGKAT CUSTOMER
@@ -52,7 +56,7 @@ export default function App() {
   // AUTO START GPS CUSTOMER
   // =====================================
   useEffect(() => {
-    if (!loggedIn) return;
+    if (checking || !loggedIn) return;
 
     const customerId = localStorage.getItem("customer_id");
     const customerName = localStorage.getItem("customer_name");
@@ -60,13 +64,13 @@ export default function App() {
     if (customerId && customerName) {
       startCustomerGPS(customerId, customerName);
     }
-  }, [loggedIn]);
+  }, [checking, loggedIn]);
 
   // =====================================
   // REALTIME NOTIFICATION
   // =====================================
   useEffect(() => {
-    if (!loggedIn) return;
+    if (checking || !loggedIn) return;
 
     const customerId = localStorage.getItem("customer_id");
     if (!customerId) return;
@@ -80,22 +84,47 @@ export default function App() {
         unsubNotif.unsubscribe();
       } catch {}
     };
-  }, [loggedIn]);
+  }, [checking, loggedIn]);
 
   // =====================================
   // ROUTES
   // =====================================
   return (
     <Routes>
-      <Route path="/" element={loggedIn ? <Home /> : <Navigate to="/login" />} />
-      <Route path="/services" element={loggedIn ? <Services /> : <Navigate to="/login" />} />
-      <Route path="/checkout/:serviceId" element={loggedIn ? <Checkout /> : <Navigate to="/login" />} />
-      <Route path="/chat/:orderId" element={loggedIn ? <Chat /> : <Navigate to="/login" />} />
-      <Route path="/history" element={loggedIn ? <History /> : <Navigate to="/login" />} />
-      <Route path="/rating/:orderId" element={loggedIn ? <Rating /> : <Navigate to="/login" />} />
-      <Route path="/profile" element={loggedIn ? <Profile /> : <Navigate to="/login" />} />
-      <Route path="/track/:orderId" element={loggedIn ? <TrackOrder /> : <Navigate to="/login" />} />
+      {/* Protected Area */}
+      <Route
+        path="/"
+        element={<ProtectedRoute loggedIn={loggedIn} checking={checking} />}
+      >
+        <Route index element={<Home />} />
+        <Route path="services" element={<Services />} />
+        <Route path="checkout/:serviceId" element={<Checkout />} />
+        <Route path="chat/:orderId" element={<Chat />} />
+        <Route path="history" element={<History />} />
+        <Route path="rating/:orderId" element={<Rating />} />
+        <Route path="profile" element={<Profile />} />
+        <Route path="track/:orderId" element={<TrackOrder />} />
+      </Route>
+
+      {/* Public Area */}
       <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+
+      {/* Fallback */}
+      <Route path="*" element={<Navigate to={loggedIn ? "/" : "/login"} replace />} />
     </Routes>
   );
-      }
+}
+
+function ProtectedRoute({ loggedIn, checking }) {
+  if (checking) {
+    return <div className="p-6 text-center">Memeriksa sesi...</div>;
+  }
+
+  if (!loggedIn) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return <Outlet />;
+}
