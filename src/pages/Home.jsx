@@ -1,11 +1,14 @@
 // src/pages/Home.jsx
 import React, { useEffect, useState } from "react";
-import { supabase } from "../lib/supabaseClient";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "../lib/supabase";
 import { createOrder } from "../lib/order";
 
 export default function Home() {
   const customer_id = localStorage.getItem("customer_id");
   const customer_name = localStorage.getItem("customer_name");
+  const customer_address = localStorage.getItem("customer_address") || "";
+  const navigate = useNavigate();
 
   const [loading, setLoading] = useState(false);
   const [services, setServices] = useState([]);
@@ -26,7 +29,8 @@ export default function Home() {
         console.error("Gagal load services:", error);
         return;
       }
-      setServices(data);
+
+      setServices(data || []);
     }
 
     fetchServices();
@@ -49,7 +53,9 @@ export default function Home() {
         customer_id,
         customer_name,
         service_id: service.id,
-        total_price: 0, // akan dihitung di halaman order detail
+        service_name: service.name,
+        customer_address,
+        total_price: 0, // akan dihitung di halaman order detail / checkout
       });
 
       if (!newOrder) {
@@ -58,8 +64,7 @@ export default function Home() {
         return;
       }
 
-      // Redirect ke halaman order detail
-      window.location.href = `/order/${newOrder.id}`;
+      navigate(`/order/${newOrder.id}`);
     } catch (err) {
       console.error("Error create order:", err);
       setMessage("Terjadi kesalahan.");
@@ -73,6 +78,12 @@ export default function Home() {
       <h2>Selamat datang, {customer_name}</h2>
       <p>Pilih layanan yang ingin Anda pesan:</p>
 
+      {message && (
+        <p style={{ color: "red", marginTop: 10, marginBottom: 10 }}>
+          {message}
+        </p>
+      )}
+
       {/* ----------------------------------------
           LIST LAYANAN
       ---------------------------------------- */}
@@ -85,27 +96,45 @@ export default function Home() {
               key={srv.id}
               style={{
                 padding: "15px",
-                border: "1px solid #ddd",
-                marginBottom: "12px",
-                borderRadius: "10px",
-                cursor: "pointer",
+                border: "1px solid #e5e7eb",
+                borderRadius: 10,
+                marginBottom: 12,
+                background: "white",
               }}
-              onClick={() => handleCreateOrder(srv)}
             >
               <h3 style={{ margin: 0 }}>{srv.name}</h3>
-              <p style={{ margin: "5px 0", color: "#666" }}>
-                {srv.short_description || "Layanan tersedia di wilayah Anda"}
+
+              {srv.description && (
+                <p style={{ marginTop: 6, marginBottom: 6, color: "#374151" }}>
+                  {srv.description}
+                </p>
+              )}
+
+              <p style={{ marginTop: 6, marginBottom: 12 }}>
+                <b>Harga:</b>{" "}
+                Rp{" "}
+                {(srv.price ?? 0).toLocaleString("id-ID")}
               </p>
+
+              <button
+                onClick={() => handleCreateOrder(srv)}
+                disabled={loading}
+                style={{
+                  width: "100%",
+                  padding: 12,
+                  borderRadius: 10,
+                  border: "none",
+                  background: "#2563eb",
+                  color: "white",
+                  cursor: "pointer",
+                  opacity: loading ? 0.7 : 1,
+                }}
+              >
+                {loading ? "Memproses..." : "Pesan Layanan Ini"}
+              </button>
             </div>
           ))}
         </div>
-      )}
-
-      {/* ----------------------------------------
-          MESSAGE
-      ---------------------------------------- */}
-      {message && (
-        <p style={{ marginTop: "15px", fontWeight: "bold" }}>{message}</p>
       )}
     </div>
   );
