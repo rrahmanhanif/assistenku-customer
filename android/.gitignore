@@ -1,0 +1,16 @@
+# Gradle
+.gradle/
+build/
+app/build/
+
+# Capacitor / Cordova
+capacitor-cordova-android-plugins/
+
+# Local Android config
+local.properties
+
+# IDE
+.idea/
+
+# OS
+.DS_Store
