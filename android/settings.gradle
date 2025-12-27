@@ -1,0 +1,4 @@
+include ":app"
+project(":app").projectDir = new File(rootDir, "app")
+
+apply from: new File(rootDir, "capacitor.settings.gradle")
