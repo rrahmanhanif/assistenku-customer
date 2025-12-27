@@ -6,11 +6,11 @@ import { supabase } from "./supabase";
 // ------------------------------
 export async function sendChatMessage(payload) {
   const { data, error } = await supabase
-    .from("chat_messages")
+    .from("messages")
     .insert([
       {
         order_id: payload.order_id,
-        sender_type: payload.sender_type, // "customer" / "mitra"
+        sender: payload.sender || payload.sender_type, // "customer" / "mitra"
         sender_id: payload.sender_id,
         message: payload.message,
       },
@@ -31,7 +31,7 @@ export async function sendChatMessage(payload) {
 // ------------------------------
 export async function getChat(orderId) {
   const { data, error } = await supabase
-    .from("chat_messages")
+    .from("messages")
     .select("*")
     .eq("order_id", orderId)
     .order("created_at", { ascending: true });
@@ -55,7 +55,7 @@ export function subscribeChat(orderId, callback) {
       {
         event: "INSERT",
         schema: "public",
-        table: "chat_messages",
+        table: "messages",
         filter: `order_id=eq.${orderId}`,
       },
       (payload) => {
