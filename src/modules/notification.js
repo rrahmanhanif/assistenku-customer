@@ -1,9 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
-
-const supabase = createClient(
-  "https://vptfubypmfafrnmwweyj.supabase.co",
-  "YOUR_ANON_KEY"
-);
+import { supabase } from "../lib/supabase";
 
 // callback akan dipanggil ketika ada pesan masuk dari mitra
 export function listenCustomerNotification(customerId, callback) {
@@ -15,13 +10,13 @@ export function listenCustomerNotification(customerId, callback) {
         event: "INSERT",
         schema: "public",
         table: "messages",
-        filter: `sender=eq.mitra`
+        filter: `sender=eq.mitra`,
       },
       (payload) => {
         callback({
           order_id: payload.new.order_id,
           message: payload.new.message,
-          sender: payload.new.sender
+          sender: payload.new.sender,
         });
       }
     )
