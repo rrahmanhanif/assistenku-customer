@@ -1,44 +1,40 @@
 // src/pages/Home.jsx
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { supabase } from "../lib/supabase";
+import { supabase } from "../lib/supabaseClient";
 import { createOrder } from "../lib/order";
 
 export default function Home() {
   const customer_id = localStorage.getItem("customer_id");
   const customer_name = localStorage.getItem("customer_name");
-  const customer_address = localStorage.getItem("customer_address") || "";
-  const navigate = useNavigate();
 
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [services, setServices] = useState([]);
   const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
 
-  // ----------------------------------------
-  // STEP 1 — Ambil layanan dari Supabase
-  // ----------------------------------------
   useEffect(() => {
     async function fetchServices() {
-      const { data, error } = await supabase
+      setLoading(true);
+      setError("");
+
+      const { data, error: fetchError } = await supabase
         .from("services")
         .select("*")
         .eq("active", true)
         .order("sort_order", { ascending: true });
 
-      if (error) {
-        console.error("Gagal load services:", error);
-        return;
+      if (fetchError) {
+        console.error("Gagal load services:", fetchError);
+        setError("Gagal memuat layanan. Coba lagi nanti.");
       }
 
       setServices(data || []);
+      setLoading(false);
     }
 
     fetchServices();
   }, []);
 
-  // ----------------------------------------
-  // STEP 2 — Membuat pesanan dari layanan tertentu
-  // ----------------------------------------
   async function handleCreateOrder(service) {
     if (!customer_id || !customer_name) {
       setMessage("Login ulang diperlukan.");
@@ -47,15 +43,14 @@ export default function Home() {
 
     setLoading(true);
     setMessage("");
+    setError("");
 
     try {
       const newOrder = await createOrder({
         customer_id,
         customer_name,
         service_id: service.id,
-        service_name: service.name,
-        customer_address,
-        total_price: 0, // akan dihitung di halaman order detail / checkout
+        total_price: 0,
       });
 
       if (!newOrder) {
@@ -64,7 +59,7 @@ export default function Home() {
         return;
       }
 
-      navigate(`/order/${newOrder.id}`);
+      window.location.href = `/order/${newOrder.id}`;
     } catch (err) {
       console.error("Error create order:", err);
       setMessage("Terjadi kesalahan.");
@@ -74,64 +69,48 @@ export default function Home() {
   }
 
   return (
-    <div style={{ padding: "20px" }}>
-      <h2>Selamat datang, {customer_name}</h2>
-      <p>Pilih layanan yang ingin Anda pesan:</p>
-
-      {message && (
-        <p style={{ color: "red", marginTop: 10, marginBottom: 10 }}>
-          {message}
+    <div className="page-container space-y-4">
+      <section>
+        <p className="section-subtitle">
+          Hai, {customer_name || "Customer"}
         </p>
-      )}
+        <h2 className="section-title">Pilih layanan terbaik untuk Anda</h2>
+        <p className="section-subtitle">
+          Temukan layanan kebersihan, perawatan, hingga kurir instan yang siap
+          membantu.
+        </p>
+      </section>
 
-      {/* ----------------------------------------
-          LIST LAYANAN
-      ---------------------------------------- */}
-      {services.length === 0 ? (
-        <p>Layanan sedang dimuat...</p>
+      {message && <div className="alert alert-success">{message}</div>}
+      {error && <div className="alert alert-error">{error}</div>}
+
+      {loading ? (
+        <div className="space-y-3">
+          {[1, 2, 3].map((item) => (
+            <div key={item} className="card skeleton">
+              <div className="skeleton-line short" />
+              <div className="skeleton-line" />
+              <div className="skeleton-line short" />
+            </div>
+          ))}
+        </div>
+      ) : services.length === 0 ? (
+        <div className="empty-state">
+          <p>Belum ada layanan aktif untuk wilayah Anda.</p>
+        </div>
       ) : (
-        <div style={{ marginTop: "20px" }}>
+        <div className="space-y-3">
           {services.map((srv) => (
             <div
               key={srv.id}
-              style={{
-                padding: "15px",
-                border: "1px solid #e5e7eb",
-                borderRadius: 10,
-                marginBottom: 12,
-                background: "white",
-              }}
+              className="card service-card"
+              onClick={() => handleCreateOrder(srv)}
             >
-              <h3 style={{ margin: 0 }}>{srv.name}</h3>
-
-              {srv.description && (
-                <p style={{ marginTop: 6, marginBottom: 6, color: "#374151" }}>
-                  {srv.description}
-                </p>
-              )}
-
-              <p style={{ marginTop: 6, marginBottom: 12 }}>
-                <b>Harga:</b>{" "}
-                Rp{" "}
-                {(srv.price ?? 0).toLocaleString("id-ID")}
+              <h3 className="section-title">{srv.name}</h3>
+              <p className="section-subtitle">
+                {srv.short_description ||
+                  "Layanan tersedia di wilayah Anda"}
               </p>
-
-              <button
-                onClick={() => handleCreateOrder(srv)}
-                disabled={loading}
-                style={{
-                  width: "100%",
-                  padding: 12,
-                  borderRadius: 10,
-                  border: "none",
-                  background: "#2563eb",
-                  color: "white",
-                  cursor: "pointer",
-                  opacity: loading ? 0.7 : 1,
-                }}
-              >
-                {loading ? "Memproses..." : "Pesan Layanan Ini"}
-              </button>
             </div>
           ))}
         </div>
