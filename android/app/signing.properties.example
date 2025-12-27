@@ -1,0 +1,6 @@
+# Example signing configuration (DO NOT COMMIT the real signing.properties)
+
+storeFile=/path/to/keystore.jks
+storePassword=changeit
+keyAlias=assistenku
+keyPassword=changeit
