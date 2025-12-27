@@ -1,0 +1,27 @@
+#!/usr/bin/env sh
+
+##############################################################################
+##
+##  Gradle start up script for UN*X
+##
+##############################################################################
+
+# Determine the Java command to use to start the JVM.
+if [ -n "$JAVA_HOME" ] ; then
+    if [ -x "$JAVA_HOME/jre/sh/java" ] ; then
+        JAVA_CMD="$JAVA_HOME/jre/sh/java"
+    else
+        JAVA_CMD="$JAVA_HOME/bin/java"
+    fi
+    if [ ! -x "$JAVA_CMD" ] ; then
+        echo "ERROR: JAVA_HOME is set to an invalid directory: $JAVA_HOME" >&2
+        exit 1
+    fi
+else
+    JAVA_CMD="java"
+fi
+
+APP_HOME=$(cd "$(dirname "$0")" && pwd -P)
+CLASSPATH=$APP_HOME/gradle/wrapper/gradle-wrapper.jar
+
+exec "$JAVA_CMD" -Xmx64m -Xms64m -classpath "$CLASSPATH" org.gradle.wrapper.GradleWrapperMain "$@"
