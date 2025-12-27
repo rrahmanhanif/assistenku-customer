@@ -1,5 +1,13 @@
+# Environment
 .env
+
+# Node / build output
 node_modules/
 dist/
 coverage/
+
+# Android (signing & local config)
+android/app/signing.properties
+
+# OS
 .DS_Store
