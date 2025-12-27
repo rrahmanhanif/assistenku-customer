@@ -1,8 +1,7 @@
-// src/lib/order.js
 import { supabase } from "./supabase";
 
 /* ===============================
-   1. Ambil semua order milik customer
+   1. Ambil semua order customer
    =============================== */
 export async function getOrders(customerId) {
   try {
@@ -13,7 +12,7 @@ export async function getOrders(customerId) {
       .order("created_at", { ascending: false });
 
     if (error) throw error;
-    return data;
+    return data || [];
   } catch (err) {
     console.error("Error getOrders:", err);
     return [];
@@ -44,33 +43,51 @@ export async function getOrderById(orderId) {
    =============================== */
 export async function createOrder(payload) {
   try {
+    const basePrice = payload.base_price || 0;
+    const surgePrice = payload.surge_price || 0;
+    const overtimePrice = payload.overtime_price || 0;
+
+    const subtotal = basePrice + surgePrice + overtimePrice;
+    const platformFee = Math.round(subtotal * 0.05);
+
+    const totalPrice =
+      typeof payload.total_price === "number"
+        ? payload.total_price
+        : subtotal + platformFee;
+
     const { data, error } = await supabase
       .from("orders")
       .insert([
         {
           customer_id: payload.customer_id,
           customer_name: payload.customer_name,
+          customer_address: payload.customer_address || "",
 
           service_id: payload.service_id,
           service_name: payload.service_name,
 
-          // Harga dibaca dari layanan
-          base_price: payload.base_price || 0,
-          surge_price: payload.surge_price || 0,
-          overtime_price: payload.overtime_price || 0,
+          base_price: basePrice,
+          surge_price: surgePrice,
+          overtime_price: overtimePrice,
+          platform_fee: platformFee,
 
-          total_price: payload.total_price,
+          total_price: totalPrice,
 
           status: "MENUNGGU_KONFIRMASI",
+          payment_status: payload.payment_status || "UNPAID",
+          payment_method: payload.payment_method || "none",
         },
       ])
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      throw new Error(error.message);
+    }
+
     return data;
   } catch (err) {
-    console.error("Error createOrder:", err);
+    console.error("Error createOrder:", err?.message || err);
     return null;
   }
 }
@@ -100,10 +117,7 @@ export async function updateOrder(orderId, updates) {
    =============================== */
 export async function deleteOrder(orderId) {
   try {
-    const { error } = await supabase
-      .from("orders")
-      .delete()
-      .eq("id", orderId);
+    const { error } = await supabase.from("orders").delete().eq("id", orderId);
 
     if (error) throw error;
     return true;
@@ -111,4 +125,4 @@ export async function deleteOrder(orderId) {
     console.error("Error deleteOrder:", err);
     return false;
   }
-            }
+}
