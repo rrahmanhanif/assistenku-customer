@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<data-extraction-rules>
+
+    <!-- Cloud backup (Android Auto Backup / Google Backup) -->
+    <cloud-backup>
+        <exclude domain="sharedpref" path="CapacitorStorage" />
+    </cloud-backup>
+
+    <!-- Device-to-device transfer -->
+    <device-transfer>
+        <exclude domain="sharedpref" path="CapacitorStorage" />
+    </device-transfer>
+
+</data-extraction-rules>
