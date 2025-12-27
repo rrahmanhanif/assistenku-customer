@@ -1,5 +1,5 @@
 // src/App.jsx
-import React, { useEffect } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Routes, Route, Navigate, Outlet } from "react-router-dom";
 import "leaflet/dist/leaflet.css";
 import { supabase } from "./lib/supabase";
@@ -27,6 +27,10 @@ import { startCustomerGPS } from "./modules/gpsTrackerCustomer";
 
 export default function App() {
   const { loggedIn, checking } = useAuthGuard();
+
+  // Toast notifications
+  const [notifications, setNotifications] = useState([]);
+  const timeoutsRef = useRef(new Map());
 
   // =====================================
   // DEVICE LOCK — CEK PERANGKAT CUSTOMER
@@ -69,7 +73,7 @@ export default function App() {
   }, [checking, loggedIn]);
 
   // =====================================
-  // REALTIME NOTIFICATION
+  // REALTIME NOTIFICATION (Toast)
   // =====================================
   useEffect(() => {
     if (checking || !loggedIn) return;
@@ -78,13 +82,32 @@ export default function App() {
     if (!customerId) return;
 
     const unsubNotif = listenCustomerNotification(customerId, (notif) => {
-      alert("Pesan Baru: " + notif.message);
+      const id =
+        typeof crypto !== "undefined" && crypto.randomUUID
+          ? crypto.randomUUID()
+          : String(Date.now() + Math.random());
+
+      setNotifications((prev) => [...prev, { id, message: notif.message }]);
+
+      const timeoutId = setTimeout(() => {
+        setNotifications((prev) => prev.filter((item) => item.id !== id));
+        timeoutsRef.current.delete(id);
+      }, 5000);
+
+      timeoutsRef.current.set(id, timeoutId);
     });
 
     return () => {
+      // stop realtime listener
       try {
         unsubNotif.unsubscribe();
       } catch {}
+
+      // clear pending timeouts
+      for (const t of timeoutsRef.current.values()) {
+        clearTimeout(t);
+      }
+      timeoutsRef.current.clear();
     };
   }, [checking, loggedIn]);
 
@@ -92,37 +115,68 @@ export default function App() {
   // ROUTES
   // =====================================
   return (
-    <Routes>
-      {/* Protected Area */}
-      <Route
-        path="/"
-        element={<ProtectedRoute loggedIn={loggedIn} checking={checking} />}
+    <>
+      {/* Toast container */}
+      <div
+        style={{
+          position: "fixed",
+          top: 16,
+          right: 16,
+          display: "flex",
+          flexDirection: "column",
+          gap: 8,
+          zIndex: 1000,
+        }}
+        aria-live="polite"
       >
-        <Route index element={<Home />} />
-        <Route path="services" element={<Services />} />
+        {notifications.map((item) => (
+          <div
+            key={item.id}
+            style={{
+              background: "#1e293b",
+              color: "white",
+              padding: "10px 14px",
+              borderRadius: 8,
+              boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+              minWidth: 220,
+            }}
+          >
+            Pesan Baru: {item.message}
+          </div>
+        ))}
+      </div>
 
-        {/* Perubahan sesuai patch lama */}
-        <Route path="order/:orderId" element={<OrderDetail />} />
-        <Route path="checkout/:orderId" element={<Checkout />} />
+      <Routes>
+        {/* Protected Area */}
+        <Route
+          path="/"
+          element={<ProtectedRoute loggedIn={loggedIn} checking={checking} />}
+        >
+          <Route index element={<Home />} />
+          <Route path="services" element={<Services />} />
 
-        <Route path="chat/:orderId" element={<Chat />} />
-        <Route path="history" element={<History />} />
-        <Route path="rating/:orderId" element={<Rating />} />
-        <Route path="profile" element={<Profile />} />
-        <Route path="track/:orderId" element={<TrackOrder />} />
-      </Route>
+          <Route path="order/:orderId" element={<OrderDetail />} />
+          <Route path="checkout/:orderId" element={<Checkout />} />
 
-      {/* Public Area */}
-      <Route path="/login" element={<Login />} />
-      <Route path="/register" element={<Register />} />
-      <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="chat/:orderId" element={<Chat />} />
+          <Route path="history" element={<History />} />
+          <Route path="rating/:orderId" element={<Rating />} />
+          <Route path="profile" element={<Profile />} />
+          <Route path="track/:orderId" element={<TrackOrder />} />
+        </Route>
 
-      {/* Fallback */}
-      <Route
-        path="*"
-        element={<Navigate to={loggedIn ? "/" : "/login"} replace />}
-      />
-    </Routes>
+        {/* Public Area */}
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+
+        {/* Fallback */}
+        <Route
+          path="*"
+          element={<Navigate to={loggedIn ? "/" : "/login"} replace />}
+        />
+      </Routes>
+    </>
   );
 }
 
