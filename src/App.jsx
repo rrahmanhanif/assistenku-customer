@@ -1,19 +1,12 @@
 // src/App.jsx
-import React, { useEffect, useRef, useState } from "react";
-import { Routes, Route, Navigate, Outlet, useLocation } from "react-router-dom";
+import React, { useEffect } from "react";
+import { Routes, Route, Navigate } from "react-router-dom";
 import "leaflet/dist/leaflet.css";
 import { supabase } from "./lib/supabase";
-import useAuthGuard from "./hooks/useAuthGuard";
+import { revealDeviceId } from "./lib/device";
 
-// Layout
-import Layout from "./components/Layout";
-
-// Pages (Public)
+// Pages
 import Login from "./pages/Login";
-import Register from "./pages/Register";
-import ForgotPassword from "./pages/ForgotPassword";
-
-// Pages (Protected)
 import Home from "./pages/Home";
 import Profile from "./pages/Profile";
 import TrackOrder from "./pages/TrackOrder";
@@ -22,37 +15,37 @@ import History from "./pages/History";
 import Rating from "./pages/Rating";
 import Services from "./pages/Services";
 import Checkout from "./pages/Checkout";
-import OrderDetail from "./pages/OrderDetail";
 
 // Modules
 import { listenCustomerNotification } from "./modules/notification";
 import { startCustomerGPS } from "./modules/gpsTrackerCustomer";
 
 export default function App() {
-  const { loggedIn, checking } = useAuthGuard();
-
-  // Toast notifications
-  const [notifications, setNotifications] = useState([]);
-  const timeoutsRef = useRef(new Map());
+  const loggedIn = localStorage.getItem("customer_auth") === "true";
 
   // =====================================
   // DEVICE LOCK — CEK PERANGKAT CUSTOMER
   // =====================================
   useEffect(() => {
     async function checkDevice() {
-      const deviceLocal = localStorage.getItem("device_id");
+      const storedDevice = localStorage.getItem("device_id");
+      const deviceLocal = revealDeviceId(storedDevice) || storedDevice;
       const customerId = localStorage.getItem("customer_id");
 
       if (!deviceLocal || !customerId) return;
 
-      const { data } = await supabase
-        .from("customers")
+      const { data, error } = await supabase
+        .from("profiles")
         .select("device_id")
         .eq("id", customerId)
         .single();
 
+      if (error) return;
+
       if (data && data.device_id !== deviceLocal) {
-        alert("Akun ini sedang digunakan di perangkat lain.");
+        alert(
+          "Kami mendeteksi sesi lain aktif di perangkat berbeda. Demi keamanan, kami keluarkan sesi ini. Silakan login kembali di perangkat yang ingin digunakan."
+        );
         localStorage.clear();
         window.location.href = "/login";
       }
@@ -65,7 +58,7 @@ export default function App() {
   // AUTO START GPS CUSTOMER
   // =====================================
   useEffect(() => {
-    if (checking || !loggedIn) return;
+    if (!loggedIn) return;
 
     const customerId = localStorage.getItem("customer_id");
     const customerName = localStorage.getItem("customer_name");
@@ -73,151 +66,71 @@ export default function App() {
     if (customerId && customerName) {
       startCustomerGPS(customerId, customerName);
     }
-  }, [checking, loggedIn]);
+  }, [loggedIn]);
 
   // =====================================
-  // REALTIME NOTIFICATION (Toast)
+  // REALTIME NOTIFICATION
   // =====================================
   useEffect(() => {
-    if (checking || !loggedIn) return;
+    if (!loggedIn) return;
 
     const customerId = localStorage.getItem("customer_id");
     if (!customerId) return;
 
-    const unsubNotif = listenCustomerNotification(customerId, (notif) => {
-      const id =
-        typeof crypto !== "undefined" && crypto.randomUUID
-          ? crypto.randomUUID()
-          : String(Date.now() + Math.random());
-
-      setNotifications((prev) => [...prev, { id, message: notif.message }]);
-
-      const timeoutId = setTimeout(() => {
-        setNotifications((prev) => prev.filter((item) => item.id !== id));
-        timeoutsRef.current.delete(id);
-      }, 5000);
-
-      timeoutsRef.current.set(id, timeoutId);
-    });
-
+    const unsubscribe = listenCustomerNotification(customerId);
     return () => {
-      try {
-        unsubNotif.unsubscribe();
-      } catch {}
-
-      for (const t of timeoutsRef.current.values()) {
-        clearTimeout(t);
-      }
-      timeoutsRef.current.clear();
+      if (typeof unsubscribe === "function") unsubscribe();
     };
-  }, [checking, loggedIn]);
+  }, [loggedIn]);
 
   return (
-    <>
-      {/* Toast container */}
-      <div
-        style={{
-          position: "fixed",
-          top: 16,
-          right: 16,
-          display: "flex",
-          flexDirection: "column",
-          gap: 8,
-          zIndex: 1000,
-        }}
-        aria-live="polite"
-      >
-        {notifications.map((item) => (
-          <div
-            key={item.id}
-            style={{
-              background: "#1e293b",
-              color: "white",
-              padding: "10px 14px",
-              borderRadius: 8,
-              boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-              minWidth: 220,
-            }}
-          >
-            Pesan Baru: {item.message}
-          </div>
-        ))}
-      </div>
+    <Routes>
+      <Route path="/login" element={<Login />} />
 
-      <Routes>
-        {/* Protected Area */}
-        <Route
-          path="/"
-          element={<ProtectedRoute loggedIn={loggedIn} checking={checking} />}
-        >
-          {/* Layout wrapper hanya sekali */}
-          <Route element={<ProtectedShell />}>
-            <Route index element={<Home />} />
-            <Route path="services" element={<Services />} />
+      <Route
+        path="/"
+        element={loggedIn ? <Home /> : <Navigate to="/login" replace />}
+      />
 
-            <Route path="order/:orderId" element={<OrderDetail />} />
-            <Route path="checkout/:orderId" element={<Checkout />} />
+      <Route
+        path="/profile"
+        element={loggedIn ? <Profile /> : <Navigate to="/login" replace />}
+      />
 
-            <Route path="chat/:orderId" element={<Chat />} />
-            <Route path="history" element={<History />} />
-            <Route path="rating/:orderId" element={<Rating />} />
-            <Route path="profile" element={<Profile />} />
-            <Route path="track/:orderId" element={<TrackOrder />} />
-          </Route>
-        </Route>
+      <Route
+        path="/services"
+        element={loggedIn ? <Services /> : <Navigate to="/login" replace />}
+      />
 
-        {/* Public Area */}
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route
+        path="/checkout/:orderId"
+        element={loggedIn ? <Checkout /> : <Navigate to="/login" replace />}
+      />
 
-        {/* Fallback */}
-        <Route
-          path="*"
-          element={<Navigate to={loggedIn ? "/" : "/login"} replace />}
-        />
-      </Routes>
-    </>
+      <Route
+        path="/track/:orderId"
+        element={loggedIn ? <TrackOrder /> : <Navigate to="/login" replace />}
+      />
+
+      <Route
+        path="/chat/:orderId"
+        element={loggedIn ? <Chat /> : <Navigate to="/login" replace />}
+      />
+
+      <Route
+        path="/history"
+        element={loggedIn ? <History /> : <Navigate to="/login" replace />}
+      />
+
+      <Route
+        path="/rating/:orderId"
+        element={loggedIn ? <Rating /> : <Navigate to="/login" replace />}
+      />
+
+      <Route
+        path="*"
+        element={<Navigate to={loggedIn ? "/" : "/login"} replace />}
+      />
+    </Routes>
   );
-}
-
-function ProtectedRoute({ loggedIn, checking }) {
-  if (checking) {
-    return <div className="p-6 text-center">Memeriksa sesi...</div>;
-  }
-
-  if (!loggedIn) {
-    return <Navigate to="/login" replace />;
-  }
-
-  return <Outlet />;
-}
-
-/**
- * Shell untuk halaman protected:
- * - Membungkus semua halaman dengan Layout
- * - Set judul berdasarkan route
- */
-function ProtectedShell() {
-  const location = useLocation();
-  const title = getTitleFromPath(location.pathname);
-
-  return (
-    <Layout title={title}>
-      <Outlet />
-    </Layout>
-  );
-}
-
-function getTitleFromPath(pathname) {
-  if (pathname === "/") return "Beranda";
-  if (pathname.startsWith("/services")) return "Layanan";
-  if (pathname.startsWith("/order/")) return "Detail Order";
-  if (pathname.startsWith("/checkout/")) return "Checkout";
-  if (pathname.startsWith("/chat/")) return "Chat";
-  if (pathname.startsWith("/history")) return "Riwayat";
-  if (pathname.startsWith("/rating/")) return "Rating";
-  if (pathname.startsWith("/profile")) return "Profil";
-  if (pathname.startsWith("/track/")) return "Lacak Pesanan";
-  return "Assistenku";
 }
