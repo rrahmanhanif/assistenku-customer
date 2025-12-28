@@ -1,13 +1,23 @@
-# Environment
+# Environment variables
 .env
 
-# Node / build output
+# Node.js
 node_modules/
 dist/
 coverage/
 
-# Android (signing & local config)
-android/app/signing.properties
-
-# OS
+# OS / Editor
 .DS_Store
+.idea/
+
+# Android (local & sensitive)
+android/app/signing.properties
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+
+# Logs (optional safety)
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
