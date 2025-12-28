@@ -1,3 +1,4 @@
+// src/lib/order.js
 import { supabase } from "./supabase";
 
 /* ===============================
@@ -9,7 +10,7 @@ export async function getOrders(customerId) {
       .from("orders")
       .select("*")
       .eq("customer_id", customerId)
-      .order("created_at", { ascending: false });
+      .order("updated_at", { ascending: false });
 
     if (error) throw error;
     return data || [];
@@ -39,55 +40,33 @@ export async function getOrderById(orderId) {
 }
 
 /* ===============================
-   3. Buat pesanan baru (Final versi 8.4)
+   3. Buat pesanan baru (secure via RPC)
    =============================== */
 export async function createOrder(payload) {
   try {
-    const basePrice = payload.base_price || 0;
-    const surgePrice = payload.surge_price || 0;
-    const overtimePrice = payload.overtime_price || 0;
+    const { data, error } = await supabase.rpc("secure_create_order", {
+      order_payload: {
+        customer_id: payload.customer_id,
+        customer_name: payload.customer_name,
+        service_id: payload.service_id,
+        service_name: payload.service_name,
+        base_price: payload.base_price || 0,
+        surge_price: payload.surge_price || 0,
+        overtime_price: payload.overtime_price || 0,
+        total_price: payload.total_price,
+        status: "MENUNGGU_KONFIRMASI",
+      },
+    });
 
-    const subtotal = basePrice + surgePrice + overtimePrice;
-    const platformFee = Math.round(subtotal * 0.05);
+    if (error) throw error;
 
-    const totalPrice =
-      typeof payload.total_price === "number"
-        ? payload.total_price
-        : subtotal + platformFee;
-
-    const { data, error } = await supabase
-      .from("orders")
-      .insert([
-        {
-          customer_id: payload.customer_id,
-          customer_name: payload.customer_name,
-          customer_address: payload.customer_address || "",
-
-          service_id: payload.service_id,
-          service_name: payload.service_name,
-
-          base_price: basePrice,
-          surge_price: surgePrice,
-          overtime_price: overtimePrice,
-          platform_fee: platformFee,
-
-          total_price: totalPrice,
-
-          status: "MENUNGGU_KONFIRMASI",
-          payment_status: payload.payment_status || "UNPAID",
-          payment_method: payload.payment_method || "none",
-        },
-      ])
-      .select()
-      .single();
-
-    if (error) {
-      throw new Error(error.message);
-    }
+    // Catatan: Supabase RPC bisa mengembalikan object atau array tergantung function.
+    // Normalisasi sederhana agar pemanggil tetap dapat object order.
+    if (Array.isArray(data)) return data[0] || null;
 
     return data;
   } catch (err) {
-    console.error("Error createOrder:", err?.message || err);
+    console.error("Error createOrder:", err);
     return null;
   }
 }
@@ -109,20 +88,5 @@ export async function updateOrder(orderId, updates) {
   } catch (err) {
     console.error("Error updateOrder:", err);
     return null;
-  }
-}
-
-/* ===============================
-   5. Hapus order
-   =============================== */
-export async function deleteOrder(orderId) {
-  try {
-    const { error } = await supabase.from("orders").delete().eq("id", orderId);
-
-    if (error) throw error;
-    return true;
-  } catch (err) {
-    console.error("Error deleteOrder:", err);
-    return false;
   }
 }
