@@ -1,32 +1,24 @@
 import React, { useEffect, useState } from "react";
-import { supabase } from "../lib/supabaseClient";
+import { api } from "../lib/apiClient";
 
 export default function History() {
-  const customerId = localStorage.getItem("customer_id");
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
     fetchHistory();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function fetchHistory() {
     setLoading(true);
     setError("");
 
-    const { data, error: fetchError } = await supabase
-      .from("orders")
-      .select("*")
-      .eq("customer_id", customerId)
-      .order("updated_at", { ascending: false });
-
-    if (fetchError) {
-      console.error(fetchError);
-      setError("Gagal memuat riwayat pesanan.");
-    } else {
-      setHistory(data || []);
+    try {
+      const { orders } = await api.listOrders();
+      setHistory(orders || []);
+    } catch (err) {
+      setError(err.message);
     }
 
     setLoading(false);
@@ -66,9 +58,7 @@ export default function History() {
 
               <p className="section-subtitle">
                 Diperbarui:{" "}
-                {order.updated_at
-                  ? new Date(order.updated_at).toLocaleString()
-                  : "-"}
+                {order.updated_at ? new Date(order.updated_at).toLocaleString() : "-"}
               </p>
             </li>
           ))}
