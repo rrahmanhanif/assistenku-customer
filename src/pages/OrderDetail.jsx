@@ -1,154 +1,232 @@
-// src/pages/OrderDetail.jsx
-import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import { supabase } from "../lib/supabase";
+import React, { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
+import { apiGet, apiPost } from "../api/client";
+import OrderStatusChip from "../components/OrderStatusChip";
+import Timeline from "../components/Timeline";
+import ErrorBanner from "../components/ErrorBanner";
+import LoadingSkeleton from "../components/LoadingSkeleton";
+import { formatCurrency, formatDateTime } from "../utils/format";
 
 export default function OrderDetail() {
   const { orderId } = useParams();
-  const navigate = useNavigate();
 
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [decisionNote, setDecisionNote] = useState("");
+  const [disputeDesc, setDisputeDesc] = useState("");
+  const [polling, setPolling] = useState(null);
 
-  useEffect(() => {
-    async function loadOrder() {
+  async function loadOrder() {
+    try {
       setLoading(true);
-      setError("");
-
-      const { data, error: fetchError } = await supabase
-        .from("orders")
-        .select("*")
-        .eq("id", orderId)
-        .single();
-
-      if (fetchError) {
-        console.error("Gagal memuat order", fetchError);
-        setError("Order tidak ditemukan atau gagal dimuat.");
-        setOrder(null);
-        setLoading(false);
-        return;
-      }
-
-      setOrder(data || null);
+      const { order } = await apiGet(`/api/orders/${orderId}`);
+      setOrder(order);
+    } catch (err) {
+      setError(err.message);
+    } finally {
       setLoading(false);
     }
+  }
 
-    if (orderId) loadOrder();
+  useEffect(() => {
+    loadOrder();
+    const timer = setInterval(loadOrder, 12000);
+    setPolling(timer);
+    return () => clearInterval(timer);
   }, [orderId]);
 
-  const cost = useMemo(() => {
-    if (!order) {
-      return { base: 0, surge: 0, overtime: 0, platformFee: 0, total: 0 };
+  async function sendEvidenceDecision(decision) {
+    try {
+      setError("");
+      await apiPost(`/api/orders/${orderId}/evidence/decision`, {
+        decision,
+        note: decisionNote,
+      });
+      await loadOrder();
+    } catch (err) {
+      setError(err.message);
     }
-
-    const base = order.base_price || 0;
-    const surge = order.surge_price || 0;
-    const overtime = order.overtime_price || 0;
-
-    const subtotal = base + surge + overtime;
-    const platformFee = order.platform_fee ?? Math.round(subtotal * 0.05);
-    const total = order.total_price ?? subtotal + platformFee;
-
-    return { base, surge, overtime, platformFee, total };
-  }, [order]);
-
-  if (loading) {
-    return <p style={{ padding: 20 }}>Memuat detail order...</p>;
   }
 
-  if (error || !order) {
+  async function submitDispute() {
+    if (!disputeDesc) {
+      setError("Deskripsi komplain wajib diisi");
+      return;
+    }
+    try {
+      setError("");
+      await apiPost("/api/disputes/create", {
+        order_id: orderId,
+        category: "customer",
+        description: disputeDesc,
+      });
+      await loadOrder();
+      setDisputeDesc("");
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  async function markPaid(paymentId) {
+    try {
+      setError("");
+      await apiPost("/api/invoices/mark-paid-request", { payment_id: paymentId });
+      await loadOrder();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  if (loading)
     return (
-      <p style={{ padding: 20, color: "red" }}>
-        {error || "Order tidak ditemukan."}
-      </p>
+      <div className="p-4">
+        <LoadingSkeleton lines={6} />
+      </div>
     );
-  }
+
+  if (!order)
+    return (
+      <div className="p-4">
+        <ErrorBanner message={error || "Order tidak ditemukan"} />
+      </div>
+    );
 
   return (
-    <div style={{ padding: 20 }}>
-      <h2>Detail Order</h2>
+    <div className="p-4 space-y-4">
+      {error && <ErrorBanner message={error} />}
 
-      <div
-        style={{
-          padding: 16,
-          border: "1px solid #e5e7eb",
-          borderRadius: 12,
-          marginBottom: 16,
-        }}
-      >
-        <p style={{ margin: "6px 0" }}>
-          <strong>Order ID:</strong> {orderId}
-        </p>
-        <p style={{ margin: "6px 0" }}>
-          <strong>Layanan:</strong> {order.service_name || order.service_id}
-        </p>
-        <p style={{ margin: "6px 0" }}>
-          <strong>Status Order:</strong> {order.status}
-        </p>
-        <p style={{ margin: "6px 0" }}>
-          <strong>Status Pembayaran:</strong>{" "}
-          <span
-            style={{
-              color: order.payment_status === "PAID" ? "green" : "#eab308",
-              fontWeight: 600,
-            }}
-          >
-            {order.payment_status || "UNPAID"}
-          </span>
-        </p>
-        <p style={{ margin: "6px 0" }}>
-          <strong>Metode Pembayaran:</strong>{" "}
-          {order.payment_method && order.payment_method !== "none"
-            ? order.payment_method
-            : "Belum dipilih"}
-        </p>
-        <p style={{ margin: "6px 0" }}>
-          <strong>Alamat Pelanggan:</strong>{" "}
-          {order.customer_address || "Belum diisi"}
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm text-gray-500">Order #{order.id}</p>
+          <h1 className="text-xl font-semibold">{order.services?.name}</h1>
+          <p className="text-sm text-gray-600">{order.address_text}</p>
+        </div>
+        <OrderStatusChip status={order.status} />
       </div>
 
-      <div
-        style={{
-          padding: 16,
-          border: "1px solid #e5e7eb",
-          borderRadius: 12,
-          marginBottom: 16,
-        }}
-      >
-        <h4>Rincian Biaya</h4>
-        <p style={{ margin: "6px 0" }}>
-          Harga dasar: Rp {cost.base.toLocaleString("id-ID")}
-        </p>
-        <p style={{ margin: "6px 0" }}>
-          Surge: Rp {cost.surge.toLocaleString("id-ID")}
-        </p>
-        <p style={{ margin: "6px 0" }}>
-          Lembur: Rp {cost.overtime.toLocaleString("id-ID")}
-        </p>
-        <p style={{ margin: "6px 0" }}>
-          Platform fee: Rp {cost.platformFee.toLocaleString("id-ID")}
-        </p>
-        <hr />
-        <h3>Total: Rp {cost.total.toLocaleString("id-ID")}</h3>
-      </div>
+      <section className="border rounded-xl p-3 space-y-2">
+        <h2 className="font-semibold">Timeline</h2>
+        <Timeline items={order.order_timeline || []} />
+      </section>
 
-      <button
-        onClick={() => navigate(`/checkout/${orderId}`)}
-        style={{
-          padding: 14,
-          width: "100%",
-          background: "#2563eb",
-          color: "white",
-          border: "none",
-          borderRadius: 10,
-          fontSize: 16,
-          cursor: "pointer",
-        }}
-      >
-        Lanjut ke Checkout
-      </button>
+      <section className="border rounded-xl p-3 space-y-2">
+        <h2 className="font-semibold">Biaya & Pembayaran</h2>
+        <p className="text-sm">Estimasi: {formatCurrency(order.price_estimate)}</p>
+        <p className="text-sm">Final: {formatCurrency(order.final_price)}</p>
+
+        <div className="space-y-2">
+          {(order.payments || []).map((pmt) => (
+            <div key={pmt.id} className="border rounded-lg p-2">
+              <div className="flex justify-between text-sm">
+                <span>Invoice {pmt.invoice_no}</span>
+                <span className="font-semibold">{pmt.status}</span>
+              </div>
+              <p className="text-sm">Jumlah: {formatCurrency(pmt.amount)}</p>
+
+              {pmt.status !== "paid" && (
+                <button
+                  className="text-blue-600 text-sm"
+                  onClick={() => markPaid(pmt.id)}
+                >
+                  Saya sudah bayar
+                </button>
+              )}
+            </div>
+          ))}
+
+          {order.payments?.length === 0 && (
+            <p className="text-sm text-gray-500">Belum ada invoice</p>
+          )}
+        </div>
+      </section>
+
+      <section className="border rounded-xl p-3 space-y-2">
+        <h2 className="font-semibold">Evidence</h2>
+
+        {(order.order_evidence || []).length === 0 ? (
+          <p className="text-sm text-gray-500">Belum ada bukti</p>
+        ) : (
+          <div className="grid grid-cols-2 gap-2">
+            {(order.order_evidence || []).map((ev) => (
+              <div key={ev.id} className="border rounded-lg p-2 text-sm">
+                <p>{ev.description || ev.file_type}</p>
+                <a
+                  className="text-blue-600 text-xs"
+                  href={ev.file_url}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Lihat file
+                </a>
+                <p className="text-gray-500 text-xs">
+                  {formatDateTime(ev.created_at)}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {order.requires_evidence_approval && (
+          <div className="space-y-2">
+            <textarea
+              className="w-full border rounded-lg p-2"
+              placeholder="Catatan keputusan"
+              value={decisionNote}
+              onChange={(e) => setDecisionNote(e.target.value)}
+            />
+            <div className="flex gap-2">
+              <button
+                className="flex-1 border px-4 py-2 rounded-lg"
+                onClick={() => sendEvidenceDecision("reject")}
+              >
+                Tolak
+              </button>
+              <button
+                className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg"
+                onClick={() => sendEvidenceDecision("accept")}
+              >
+                Terima
+              </button>
+            </div>
+          </div>
+        )}
+      </section>
+
+      <section className="border rounded-xl p-3 space-y-2">
+        <h2 className="font-semibold">Komplain</h2>
+
+        <textarea
+          className="w-full border rounded-lg p-2"
+          placeholder="Jelaskan masalah Anda"
+          value={disputeDesc}
+          onChange={(e) => setDisputeDesc(e.target.value)}
+        />
+
+        <button
+          className="bg-blue-600 text-white px-4 py-2 rounded-lg"
+          onClick={submitDispute}
+        >
+          Buat Komplain
+        </button>
+
+        {(order.disputes || []).length > 0 && (
+          <div className="space-y-2">
+            {order.disputes.map((dsp) => (
+              <div key={dsp.id} className="border rounded-lg p-2 text-sm">
+                <div className="flex justify-between">
+                  <span>{dsp.category}</span>
+                  <span className="font-semibold">{dsp.status}</span>
+                </div>
+                <p>{dsp.description}</p>
+                <p className="text-gray-500 text-xs">
+                  {formatDateTime(dsp.created_at)}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
     </div>
   );
 }
