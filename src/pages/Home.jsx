@@ -1,120 +1,136 @@
-// src/pages/Home.jsx
 import React, { useEffect, useState } from "react";
-import { supabase } from "../lib/supabaseClient";
-import { createOrder } from "../lib/order";
+import { apiGet } from "../api/client";
+import ServiceCard from "../components/ServiceCard";
+import OrderStatusChip from "../components/OrderStatusChip";
+import ErrorBanner from "../components/ErrorBanner";
+import LoadingSkeleton from "../components/LoadingSkeleton";
+import { formatCurrency } from "../utils/format";
 
 export default function Home() {
-  const customer_id = localStorage.getItem("customer_id");
-  const customer_name = localStorage.getItem("customer_name");
-
-  const [loading, setLoading] = useState(true);
   const [services, setServices] = useState([]);
-  const [message, setMessage] = useState("");
+  const [pricing, setPricing] = useState(null);
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    async function fetchServices() {
-      setLoading(true);
-      setError("");
+    let active = true;
 
-      const { data, error: fetchError } = await supabase
-        .from("services")
-        .select("*")
-        .eq("active", true)
-        .order("sort_order", { ascending: true });
+    async function load() {
+      try {
+        setLoading(true);
+        const [svcRes, pricingRes, ordersRes] = await Promise.all([
+          apiGet("/api/config/services"),
+          apiGet("/api/config/pricing"),
+          apiGet("/api/orders/list?scope=active"),
+        ]);
 
-      if (fetchError) {
-        console.error("Gagal load services:", fetchError);
-        setError("Gagal memuat layanan. Coba lagi nanti.");
+        if (!active) return;
+
+        setServices(svcRes.services || []);
+        setPricing(pricingRes);
+        setOrders(ordersRes.orders || []);
+      } catch (err) {
+        if (!active) return;
+        setError(err.message);
+      } finally {
+        if (active) setLoading(false);
       }
-
-      setServices(data || []);
-      setLoading(false);
     }
 
-    fetchServices();
+    load();
+    const interval = setInterval(load, 15000);
+
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
   }, []);
 
-  async function handleCreateOrder(service) {
-    if (!customer_id || !customer_name) {
-      setMessage("Login ulang diperlukan.");
-      return;
-    }
-
-    setLoading(true);
-    setMessage("");
-    setError("");
-
-    try {
-      const newOrder = await createOrder({
-        customer_id,
-        customer_name,
-        service_id: service.id,
-        total_price: 0,
-      });
-
-      if (!newOrder) {
-        setMessage("Gagal membuat pesanan.");
-        setLoading(false);
-        return;
-      }
-
-      window.location.href = `/order/${newOrder.id}`;
-    } catch (err) {
-      console.error("Error create order:", err);
-      setMessage("Terjadi kesalahan.");
-    }
-
-    setLoading(false);
-  }
-
   return (
-    <div className="page-container space-y-4">
+    <div className="p-4 space-y-4">
+      <header className="bg-blue-600 text-white rounded-2xl p-4 shadow">
+        <p className="text-sm opacity-80">Lokasi default</p>
+        <h1 className="text-2xl font-bold">Assistenku semudah digenggaman</h1>
+        <input
+          className="mt-3 w-full p-2 rounded-lg text-black"
+          placeholder="Butuh bantuan apa hari ini?"
+        />
+      </header>
+
+      {error && <ErrorBanner message={error} />}
+
       <section>
-        <p className="section-subtitle">
-          Hai, {customer_name || "Customer"}
-        </p>
-        <h2 className="section-title">Pilih layanan terbaik untuk Anda</h2>
-        <p className="section-subtitle">
-          Temukan layanan kebersihan, perawatan, hingga kurir instan yang siap
-          membantu.
-        </p>
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="font-semibold text-lg">Pesanan Aktif</h2>
+          <a className="text-blue-600 text-sm" href="/orders">
+            Lihat semua
+          </a>
+        </div>
+
+        {loading ? (
+          <LoadingSkeleton lines={3} />
+        ) : orders.length === 0 ? (
+          <p className="text-sm text-gray-500">Belum ada pesanan aktif.</p>
+        ) : (
+          <div className="space-y-3">
+            {orders.map((order) => (
+              <a
+                key={order.id}
+                href={`/orders/${order.id}`}
+                className="block border rounded-xl p-3 hover:border-blue-500"
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-500">{order.services?.name}</p>
+                    <p className="font-semibold">{order.address_text}</p>
+                    <p className="text-xs text-gray-500">
+                      {order.schedule_at
+                        ? new Date(order.schedule_at).toLocaleString()
+                        : "Jadwal fleksibel"}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <OrderStatusChip status={order.status} />
+                    <p className="text-sm text-gray-600 mt-1">
+                      {formatCurrency(order.price_estimate)}
+                    </p>
+                  </div>
+                </div>
+              </a>
+            ))}
+          </div>
+        )}
       </section>
 
-      {message && <div className="alert alert-success">{message}</div>}
-      {error && <div className="alert alert-error">{error}</div>}
+      <section>
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="font-semibold text-lg">Layanan</h2>
+        </div>
 
-      {loading ? (
-        <div className="space-y-3">
-          {[1, 2, 3].map((item) => (
-            <div key={item} className="card skeleton">
-              <div className="skeleton-line short" />
-              <div className="skeleton-line" />
-              <div className="skeleton-line short" />
-            </div>
-          ))}
-        </div>
-      ) : services.length === 0 ? (
-        <div className="empty-state">
-          <p>Belum ada layanan aktif untuk wilayah Anda.</p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {services.map((srv) => (
-            <div
-              key={srv.id}
-              className="card service-card"
-              onClick={() => handleCreateOrder(srv)}
-            >
-              <h3 className="section-title">{srv.name}</h3>
-              <p className="section-subtitle">
-                {srv.short_description ||
-                  "Layanan tersedia di wilayah Anda"}
-              </p>
-            </div>
-          ))}
-        </div>
-      )}
+        {loading ? (
+          <LoadingSkeleton lines={5} />
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {services.map((service) => (
+              <ServiceCard
+                key={service.id}
+                service={service}
+                onSelect={() => {
+                  window.location.href = `/order/new?service=${service.id}`;
+                }}
+              />
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="bg-gray-50 border rounded-xl p-3">
+        <h2 className="font-semibold text-lg mb-1">Pricing version</h2>
+        <p className="text-sm text-gray-600">
+          {pricing ? pricing.pricing_version : "Memuat..."}
+        </p>
+      </section>
     </div>
   );
 }
