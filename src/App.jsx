@@ -5,7 +5,6 @@ import "leaflet/dist/leaflet.css";
 import { supabase } from "./lib/supabase";
 import { revealDeviceId } from "./lib/device";
 
-// Pages
 import Login from "./pages/Login";
 import Home from "./pages/Home";
 import Profile from "./pages/Profile";
@@ -15,17 +14,20 @@ import History from "./pages/History";
 import Rating from "./pages/Rating";
 import Services from "./pages/Services";
 import Checkout from "./pages/Checkout";
+import OrderDetail from "./pages/OrderDetail";
+import Orders from "./pages/Orders";
+import Payments from "./pages/Payments";
+import Help from "./pages/Help";
+import CreateOrder from "./pages/CreateOrder";
+import Invoices from "./pages/Invoices";
+import Disputes from "./pages/Disputes";
 
-// Modules
 import { listenCustomerNotification } from "./modules/notification";
 import { startCustomerGPS } from "./modules/gpsTrackerCustomer";
 
 export default function App() {
   const loggedIn = localStorage.getItem("customer_auth") === "true";
 
-  // =====================================
-  // DEVICE LOCK — CEK PERANGKAT CUSTOMER
-  // =====================================
   useEffect(() => {
     async function checkDevice() {
       const storedDevice = localStorage.getItem("device_id");
@@ -54,9 +56,6 @@ export default function App() {
     checkDevice();
   }, []);
 
-  // =====================================
-  // AUTO START GPS CUSTOMER
-  // =====================================
   useEffect(() => {
     if (!loggedIn) return;
 
@@ -68,9 +67,6 @@ export default function App() {
     }
   }, [loggedIn]);
 
-  // =====================================
-  // REALTIME NOTIFICATION
-  // =====================================
   useEffect(() => {
     if (!loggedIn) return;
 
@@ -91,37 +87,60 @@ export default function App() {
         path="/"
         element={loggedIn ? <Home /> : <Navigate to="/login" replace />}
       />
+      <Route
+        path="/order/new"
+        element={loggedIn ? <CreateOrder /> : <Navigate to="/login" replace />}
+      />
+      <Route
+        path="/orders"
+        element={loggedIn ? <Orders /> : <Navigate to="/login" replace />}
+      />
+      <Route
+        path="/orders/:orderId"
+        element={loggedIn ? <OrderDetail /> : <Navigate to="/login" replace />}
+      />
+      <Route
+        path="/invoices"
+        element={loggedIn ? <Invoices /> : <Navigate to="/login" replace />}
+      />
+      <Route
+        path="/disputes"
+        element={loggedIn ? <Disputes /> : <Navigate to="/login" replace />}
+      />
+
+      <Route
+        path="/payments"
+        element={loggedIn ? <Payments /> : <Navigate to="/login" replace />}
+      />
+      <Route
+        path="/help"
+        element={loggedIn ? <Help /> : <Navigate to="/login" replace />}
+      />
 
       <Route
         path="/profile"
         element={loggedIn ? <Profile /> : <Navigate to="/login" replace />}
       />
-
       <Route
         path="/services"
         element={loggedIn ? <Services /> : <Navigate to="/login" replace />}
       />
-
       <Route
         path="/checkout/:orderId"
         element={loggedIn ? <Checkout /> : <Navigate to="/login" replace />}
       />
-
       <Route
         path="/track/:orderId"
         element={loggedIn ? <TrackOrder /> : <Navigate to="/login" replace />}
       />
-
       <Route
         path="/chat/:orderId"
         element={loggedIn ? <Chat /> : <Navigate to="/login" replace />}
       />
-
       <Route
         path="/history"
         element={loggedIn ? <History /> : <Navigate to="/login" replace />}
       />
-
       <Route
         path="/rating/:orderId"
         element={loggedIn ? <Rating /> : <Navigate to="/login" replace />}
