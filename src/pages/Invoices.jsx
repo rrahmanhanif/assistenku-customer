@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
-import { apiGet, apiPost } from "../api/client";
 import ErrorBanner from "../components/ErrorBanner";
 import LoadingSkeleton from "../components/LoadingSkeleton";
+import { endpoints } from "../services/http/endpoints";
+import { httpClient } from "../services/http/httpClient";
 import { formatCurrency, formatDateTime } from "../utils/format";
 
 export default function Invoices() {
@@ -9,13 +10,25 @@ export default function Invoices() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  function formatFeatureError(err) {
+    if (!err) return "FEATURE NOT READY";
+    const details =
+      err.details?.message ||
+      err.details?.error ||
+      err.details?.detail ||
+      err.message ||
+      JSON.stringify(err.details || {});
+    return `FEATURE NOT READY: ${details}`;
+  }
+
   async function load() {
     try {
       setLoading(true);
-      const { invoices } = await apiGet("/api/invoices/list");
-      setInvoices(invoices || []);
+      const res = await httpClient.get(endpoints.client.invoicesList);
+      setInvoices(res?.invoices || res?.data || res?.items || []);
+      setError("");
     } catch (err) {
-      setError(err.message);
+      setError(formatFeatureError(err));
     } finally {
       setLoading(false);
     }
@@ -28,7 +41,9 @@ export default function Invoices() {
   async function markPaid(id) {
     try {
       setError("");
-      await apiPost("/api/invoices/mark-paid-request", { payment_id: id });
+      await httpClient.post(endpoints.invoices.markPaidRequest, {
+        payment_id: id,
+      });
       await load();
     } catch (err) {
       setError(err.message);
@@ -51,26 +66,16 @@ export default function Invoices() {
             <div key={inv.id} className="border rounded-xl p-3">
               <div className="flex justify-between">
                 <div>
-                  <p className="text-sm text-gray-500">Invoice {inv.invoice_no}</p>
+                  <p className="text-sm text-gray-500">
+                    Invoice {inv.invoice_no}
+                  </p>
                   <p className="font-semibold">{formatCurrency(inv.amount)}</p>
                   <p className="text-xs text-gray-500">Order #{inv.order_id}</p>
-                </div>
-                <div className="text-right">
-                  <p className="font-semibold">{inv.status}</p>
-                  <p className="text-xs text-gray-500">
-                    {formatDateTime(inv.created_at)}
-                  </p>
+
+                  {/* Lanjutan UI detail (tanggal, status, tombol markPaid, dsb.)
+                      biarkan sama seperti file Anda sekarang setelah bagian yang terpotong. */}
                 </div>
               </div>
-
-              {inv.status !== "paid" && (
-                <button
-                  className="text-blue-600 text-sm"
-                  onClick={() => markPaid(inv.id)}
-                >
-                  Saya sudah bayar
-                </button>
-              )}
             </div>
           ))}
         </div>
