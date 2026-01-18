@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from "react";
-import { apiGet } from "../api/client";
 import OrderStatusChip from "../components/OrderStatusChip";
 import ErrorBanner from "../components/ErrorBanner";
 import LoadingSkeleton from "../components/LoadingSkeleton";
+import { endpoints } from "../services/http/endpoints";
+import { httpClient } from "../services/http/httpClient";
 import { formatCurrency } from "../utils/format";
 
 export default function Orders() {
@@ -14,7 +15,9 @@ export default function Orders() {
   async function load() {
     try {
       setLoading(true);
-      const { orders } = await apiGet(`/api/orders/list?scope=${tab}`);
+      const { orders } = await httpClient.get(
+        `${endpoints.orders.list}?scope=${tab}`
+      );
       setOrders(orders || []);
     } catch (err) {
       setError(err.message);
@@ -42,13 +45,14 @@ export default function Orders() {
         >
           Aktif
         </button>
+
         <button
           className={`px-3 py-1 rounded-full ${
-            tab === "history" ? "bg-blue-600 text-white" : "border"
+            tab === "completed" ? "bg-blue-600 text-white" : "border"
           }`}
-          onClick={() => setTab("history")}
+          onClick={() => setTab("completed")}
         >
-          Riwayat
+          Selesai
         </button>
       </div>
 
@@ -64,22 +68,17 @@ export default function Orders() {
               href={`/orders/${order.id}`}
               className="block border rounded-xl p-3 hover:border-blue-500"
             >
-              <div className="flex items-center justify-between">
+              <div className="flex justify-between">
                 <div>
-                  <p className="text-sm text-gray-500">{order.services?.name}</p>
+                  <p className="text-sm text-gray-500">
+                    {order.services?.name || "-"}
+                  </p>
                   <p className="font-semibold">{order.address_text}</p>
                   <p className="text-xs text-gray-500">
-                    {order.schedule_at
-                      ? new Date(order.schedule_at).toLocaleString()
-                      : "Jadwal fleksibel"}
+                    {formatCurrency(order.total_amount || 0)}
                   </p>
                 </div>
-                <div className="text-right">
-                  <OrderStatusChip status={order.status} />
-                  <p className="text-sm text-gray-600 mt-1">
-                    {formatCurrency(order.price_estimate)}
-                  </p>
-                </div>
+                <OrderStatusChip status={order.status} />
               </div>
             </a>
           ))}
