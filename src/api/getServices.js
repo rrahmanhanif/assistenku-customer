@@ -1,10 +1,11 @@
+import { endpoints } from "../services/http/endpoints";
+import { httpClient } from "../services/http/httpClient";
+
 export async function getServices() {
-  const endpoint = import.meta.env.VITE_ADMIN_URL + "/api/services/list";
+  const baseUrl = import.meta.env.VITE_ADMIN_URL;
+  const res = await httpClient.get(endpoints.admin.servicesList, { baseUrl });
 
-  const req = await fetch(endpoint);
-  const res = await req.json();
+  if (!res?.success) return [];
 
-  if (!res.success) return [];
-
-  return res.services;
+  return res.services || [];
 }
