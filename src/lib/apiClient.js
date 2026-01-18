@@ -1,65 +1,38 @@
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "";
-
-async function apiRequest(path, options = {}) {
-  const tokenCustomer = localStorage.getItem("customer_id");
-  const headers = {
-    "Content-Type": "application/json",
-    ...(options.headers || {}),
-    "x-customer-id": tokenCustomer || "",
-  };
-
-  const res = await fetch(`${API_BASE}/api${path}`, {
-    ...options,
-    headers,
-  });
-
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.message || "Request failed");
-  return data;
-}
+import { endpoints } from "../services/http/endpoints";
+import { httpClient } from "../services/http/httpClient";
 
 export const api = {
-  me: () => apiRequest("/customer/me"),
-  listServices: () => apiRequest("/services/list"),
-  estimateOrder: (payload) =>
-    apiRequest("/orders/estimate", {
-      method: "POST",
-      body: JSON.stringify(payload),
-    }),
-  createOrder: (payload) =>
-    apiRequest("/orders/create", {
-      method: "POST",
-      body: JSON.stringify(payload),
-    }),
+  me: () => httpClient.get(endpoints.customer.me),
+
+  listServices: () => httpClient.get(endpoints.services.list),
+
+  estimateOrder: (payload) => httpClient.post(endpoints.orders.estimate, payload),
+
+  createOrder: (payload) => httpClient.post(endpoints.orders.create, payload),
+
   listOrders: (scope) =>
-    apiRequest(`/orders/list${scope ? `?scope=${scope}` : ""}`),
-  getOrderDetail: (id) => apiRequest(`/orders/${id}`),
-  cancelOrder: (id) => apiRequest(`/orders/${id}/cancel`, { method: "POST" }),
+    httpClient.get(`${endpoints.orders.list}${scope ? `?scope=${scope}` : ""}`),
+
+  getOrderDetail: (id) => httpClient.get(endpoints.orders.detail(id)),
+
+  cancelOrder: (id) => httpClient.post(endpoints.orders.cancel(id)),
+
   decideEvidence: (id, payload) =>
-    apiRequest(`/orders/${id}/evidence/decision`, {
-      method: "POST",
-      body: JSON.stringify(payload),
-    }),
+    httpClient.post(endpoints.orders.evidenceDecision(id), payload),
+
   createPayment: (id, payload) =>
-    apiRequest(`/orders/${id}/payment/create`, {
-      method: "POST",
-      body: JSON.stringify(payload),
-    }),
+    httpClient.post(endpoints.orders.paymentCreate(id), payload),
+
   submitPaymentProof: (id, payload) =>
-    apiRequest(`/orders/${id}/payment/proof`, {
-      method: "POST",
-      body: JSON.stringify(payload),
-    }),
-  listPayments: () => apiRequest(`/payments/list`),
+    httpClient.post(endpoints.orders.paymentProof(id), payload),
+
+  listPayments: () => httpClient.get(endpoints.payments.list),
+
   createDispute: (payload) =>
-    apiRequest(`/disputes/create`, {
-      method: "POST",
-      body: JSON.stringify(payload),
-    }),
-  listChat: (orderId) => apiRequest(`/chat/list?order_id=${orderId}`),
-  sendChat: (payload) =>
-    apiRequest(`/chat/send`, {
-      method: "POST",
-      body: JSON.stringify(payload),
-    }),
+    httpClient.post(endpoints.disputes.create, payload),
+
+  listChat: (orderId) =>
+    httpClient.get(`${endpoints.chat.list}?order_id=${orderId}`),
+
+  sendChat: (payload) => httpClient.post(endpoints.chat.send, payload),
 };
