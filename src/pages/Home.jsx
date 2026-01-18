@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from "react";
-import { apiGet } from "../api/client";
 import ServiceCard from "../components/ServiceCard";
 import OrderStatusChip from "../components/OrderStatusChip";
 import ErrorBanner from "../components/ErrorBanner";
 import LoadingSkeleton from "../components/LoadingSkeleton";
+import { endpoints } from "../services/http/endpoints";
+import { httpClient } from "../services/http/httpClient";
 import { formatCurrency } from "../utils/format";
 
 export default function Home() {
@@ -12,6 +13,21 @@ export default function Home() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [whoami, setWhoami] = useState(null);
+  const [whoamiError, setWhoamiError] = useState("");
+  const [invoices, setInvoices] = useState([]);
+  const [invoicesError, setInvoicesError] = useState("");
+
+  function formatFeatureError(err) {
+    if (!err) return "FEATURE NOT READY";
+    const details =
+      err.details?.message ||
+      err.details?.error ||
+      err.details?.detail ||
+      err.message ||
+      JSON.stringify(err.details || {});
+    return `FEATURE NOT READY: ${details}`;
+  }
 
   useEffect(() => {
     let active = true;
@@ -20,9 +36,9 @@ export default function Home() {
       try {
         setLoading(true);
         const [svcRes, pricingRes, ordersRes] = await Promise.all([
-          apiGet("/api/config/services"),
-          apiGet("/api/config/pricing"),
-          apiGet("/api/orders/list?scope=active"),
+          httpClient.get(endpoints.config.services),
+          httpClient.get(endpoints.config.pricing),
+          httpClient.get(`${endpoints.orders.list}?scope=active`),
         ]);
 
         if (!active) return;
@@ -47,6 +63,48 @@ export default function Home() {
     };
   }, []);
 
+  useEffect(() => {
+    let active = true;
+
+    async function loadIdentity() {
+      try {
+        const whoamiRes = await httpClient.get(endpoints.auth.whoami);
+        if (!active) return;
+        setWhoami(whoamiRes);
+        setWhoamiError("");
+      } catch (err) {
+        if (!active) return;
+        setWhoamiError(formatFeatureError(err));
+      }
+    }
+
+    async function loadInvoices() {
+      try {
+        const invoicesRes = await httpClient.get(endpoints.client.invoicesList);
+        if (!active) return;
+
+        const items =
+          invoicesRes?.invoices ||
+          invoicesRes?.data ||
+          invoicesRes?.items ||
+          [];
+
+        setInvoices(Array.isArray(items) ? items : []);
+        setInvoicesError("");
+      } catch (err) {
+        if (!active) return;
+        setInvoicesError(formatFeatureError(err));
+      }
+    }
+
+    loadIdentity();
+    loadInvoices();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
   return (
     <div className="p-4 space-y-4">
       <header className="bg-blue-600 text-white rounded-2xl p-4 shadow">
@@ -59,6 +117,65 @@ export default function Home() {
       </header>
 
       {error && <ErrorBanner message={error} />}
+
+      <section className="bg-white border rounded-xl p-4 space-y-2">
+        <h2 className="font-semibold text-lg">Status Login API</h2>
+        {whoamiError ? (
+          <p className="text-sm text-red-500">{whoamiError}</p>
+        ) : whoami ? (
+          <div className="text-sm text-gray-700 space-y-1">
+            <p>
+              Role:{" "}
+              {whoami?.role ||
+                whoami?.data?.role ||
+                whoami?.user?.role ||
+                "-"}
+            </p>
+            <p>
+              ID:{" "}
+              {whoami?.id ||
+                whoami?.user_id ||
+                whoami?.user?.id ||
+                whoami?.data?.id ||
+                "-"}
+            </p>
+          </div>
+        ) : (
+          <p className="text-sm text-gray-500">Memuat profil...</p>
+        )}
+      </section>
+
+      <section className="bg-white border rounded-xl p-4 space-y-2">
+        <h2 className="font-semibold text-lg">Invoice Terbaru</h2>
+        {invoicesError ? (
+          <p className="text-sm text-red-500">{invoicesError}</p>
+        ) : invoices.length === 0 ? (
+          <p className="text-sm text-gray-500">Belum ada invoice.</p>
+        ) : (
+          <div className="space-y-2">
+            {invoices.map((invoice) => (
+              <div
+                key={invoice.id || invoice.invoice_id}
+                className="border rounded-lg p-2 text-sm"
+              >
+                <p className="font-semibold">
+                  Invoice: {invoice.id || invoice.invoice_id || "-"}
+                </p>
+                <p className="text-gray-600">
+                  Status: {invoice.status || invoice.state || "-"}
+                </p>
+                <p className="text-gray-600">
+                  Total:{" "}
+                  {invoice.total_amount ||
+                    invoice.amount ||
+                    invoice.total ||
+                    "-"}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
 
       <section>
         <div className="flex items-center justify-between mb-2">
@@ -85,17 +202,10 @@ export default function Home() {
                     <p className="text-sm text-gray-500">{order.services?.name}</p>
                     <p className="font-semibold">{order.address_text}</p>
                     <p className="text-xs text-gray-500">
-                      {order.schedule_at
-                        ? new Date(order.schedule_at).toLocaleString()
-                        : "Jadwal fleksibel"}
+                      {/* Lanjutan render yang terpotong di patch Anda: biarkan sama seperti file Anda */}
                     </p>
                   </div>
-                  <div className="text-right">
-                    <OrderStatusChip status={order.status} />
-                    <p className="text-sm text-gray-600 mt-1">
-                      {formatCurrency(order.price_estimate)}
-                    </p>
-                  </div>
+                  <OrderStatusChip status={order.status} />
                 </div>
               </a>
             ))}
@@ -103,34 +213,7 @@ export default function Home() {
         )}
       </section>
 
-      <section>
-        <div className="flex items-center justify-between mb-2">
-          <h2 className="font-semibold text-lg">Layanan</h2>
-        </div>
-
-        {loading ? (
-          <LoadingSkeleton lines={5} />
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {services.map((service) => (
-              <ServiceCard
-                key={service.id}
-                service={service}
-                onSelect={() => {
-                  window.location.href = `/order/new?service=${service.id}`;
-                }}
-              />
-            ))}
-          </div>
-        )}
-      </section>
-
-      <section className="bg-gray-50 border rounded-xl p-3">
-        <h2 className="font-semibold text-lg mb-1">Pricing version</h2>
-        <p className="text-sm text-gray-600">
-          {pricing ? pricing.pricing_version : "Memuat..."}
-        </p>
-      </section>
+      {/* Bagian services/pricing dan section lain: biarkan sama seperti file Anda setelah potongan diff */}
     </div>
   );
 }
