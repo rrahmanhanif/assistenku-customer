@@ -1,0 +1,359 @@
+ARSITEKTUR FINAL ASSISTENKU (NON-LEGAL) — FREEZE
+1) Scope dan Prinsip
+
+Scope: Core flow Maxim-like untuk Admin–Mitra–Customer.
+Out of scope (ditunda): Legal Workspace, e-signature, audit legal dokumen.
+
+Prinsip yang dikunci:
+
+Backend terpusat: semua logic bisnis, payment, ledger, payout ada di api.assistenku.com.
+
+Frontend pure client: repo Admin/Mitra/Customer tidak boleh punya serverless functions.
+
+No dummy: semua data berasal dari DB + API.
+
+Fallback first: sistem harus jalan tanpa webhook (manual confirm) dan tanpa payout otomatis.
+
+Siap upgrade: saat webhook/payout aktif, cukup switch config/ENV, bukan rewrite.
+
+2) Komponen Sistem
+A. Backend
+
+Domain: api.assistenku.com
+
+Tanggung jawab:
+
+Auth + role gate
+
+Service catalog
+
+Order lifecycle
+
+Payment integration (DOKU) + fallback manual
+
+Ledger split 90/10 + pajak (append-only)
+
+Payout engine (MANUAL default, DOKU mode nanti)
+
+CORS, rate limiting, error standardisasi
+
+B. Frontend
+
+Admin: admin.assistenku.com
+
+Mitra: mitra.assistenku.com
+
+Customer: app.assistenku.com
+
+Aturan:
+
+Hanya UI + API client fetch ke api.assistenku.com
+
+Tidak menyimpan secrets
+
+Tidak membuat endpoint /api di repo frontend
+
+3) Auth & Role Model
+
+Role final:
+
+ADMIN
+
+MITRA
+
+CUSTOMER
+
+Endpoint wajib:
+
+GET /api/auth/whoami → sumber kebenaran role dan identitas.
+
+Frontends wajib:
+
+Login → whoami → gate page sesuai role.
+
+4) Data Model Minimal (Freeze)
+
+Tabel minimal (konsep) dan fungsi:
+
+services
+Sumber layanan & tarif.
+
+users
+User dengan role.
+
+mitra_profiles
+Data rekening Mitra + layanan yang bisa dikerjakan.
+
+orders
+Sumber kebenaran order & status.
+
+ledger_entries (append-only)
+Sumber kebenaran keuangan: gross, tax, platform fee, mitra share, payout.
+
+payouts
+Status transfer ke mitra (manual/auto).
+
+Catatan freeze:
+
+Ledger append-only (tidak edit, hanya tambah entry).
+
+platform_fee = 10% dari subtotal layanan (sebelum pajak) dikunci.
+
+mitra_share = 90% dari subtotal dikunci.
+
+Pajak customer disimpan terpisah (customer_tax_amount).
+
+5) Order & Payment State Machine (Freeze)
+Order status:
+
+CREATED → WAITING_PAYMENT → PAID → ASSIGNED → ONGOING → DONE
+(opsional: CANCELLED)
+
+Payment status:
+
+PENDING → PAID | FAILED | EXPIRED
+
+Payment expiry:
+
+15 menit sejak “pay initiated” (dikunci).
+
+6) Payment Provider (Freeze)
+DOKU
+
+Metode utama: DOKU Checkout (redirect hosted page).
+
+Fallback: Payment Link (jika checkout production belum di-enable).
+
+Webhook (HTTP Notification)
+
+Tidak dianggap available sekarang (menunggu enablement).
+
+Backend tetap menyiapkan endpoint POST /api/webhook/doku.
+
+Core flow tetap jalan dengan fallback manual.
+
+Fallback manual
+
+Admin punya tombol:
+
+Mark as PAID jika webhook belum aktif
+
+Aksi ini:
+
+set payment/order status → PAID
+
+buat ledger entries
+
+generate payout record (pending)
+
+7) Payout Engine (Freeze: Gabungan V1 + V2)
+Default sekarang: V1 (Manual)
+
+Transfer ke mitra dilakukan manual oleh Admin.
+
+Sistem tetap mencatat:
+
+payout pending
+
+nominal
+
+bukti upload
+
+audit log
+
+Upgrade nanti: V2 (DOKU Payout)
+
+Jika disbursement/payout di-enable oleh DOKU:
+
+set PAYOUT_MODE=DOKU
+
+sistem memanggil payout API
+
+status payout: PROCESSING/PAID/FAILED
+
+Poin freeze:
+
+UI Mitra menampilkan “payout status” dari backend.
+
+Tidak ada logika payout di frontend.
+
+Tidak ada perubahan arsitektur saat upgrade.
+
+8) Endpoint Contract (Freeze)
+
+Semua repo frontend harus pakai endpoint yang sama berikut:
+
+Public
+
+GET /api/public/services
+
+Customer
+
+GET /api/client/services
+
+POST /api/client/orders
+
+POST /api/client/orders/{id}/pay
+
+GET /api/client/orders/{id}
+
+Mitra
+
+GET /api/mitra/orders
+
+POST /api/mitra/orders/{id}/accept
+
+POST /api/mitra/orders/{id}/start
+
+POST /api/mitra/orders/{id}/finish
+
+Admin
+
+GET /api/admin/orders
+
+POST /api/admin/orders/{id}/mark-paid (fallback)
+
+GET /api/admin/ledger?order_id=...
+
+GET /api/admin/payouts
+
+POST /api/admin/payouts/{id}/mark-paid
+
+Optional Webhook
+
+POST /api/webhook/doku
+
+9) Operasional & Hardening (Freeze)
+CORS
+
+Allowlist final:
+
+admin.assistenku.com
+
+mitra.assistenku.com
+
+app.assistenku.com
+
+Rate limiting (minimum)
+
+/api/client/orders/{id}/pay
+
+/api/webhook/doku
+
+/api/public/services
+
+ENV Separation
+
+Backend: production vs preview harus beda env (DOKU_BASE_URL, keys).
+
+Frontend: hanya VITE_API_BASE_URL.
+
+10) UI Freeze (Maxim-like, Assistenku nuance)
+
+Tujuan UI: fungsional dulu, minim ornament.
+
+Customer: list layanan → order → bayar → tracking status.
+
+Mitra: list order PAID → accept/start/finish → payout status.
+
+Admin: monitor order + ledger + payout + manual actions.
+
+Nuansa: biru Assistenku; layout mirip ride-hailing partner (list + status badge).
+
+11) Definisi “Sistem Sudah Hidup”
+
+Sistem dianggap berjalan & siap harian jika:
+
+Customer bisa buat order dan dapat URL pembayaran (Checkout/Payment Link).
+
+Payment bisa dikonfirmasi (manual PAID dulu).
+
+Mitra bisa menerima order PAID, start, finish.
+
+Ledger split 90/10 + pajak tercatat.
+
+Admin bisa memantau order/payout end-to-end.
+
+Webhook & payout otomatis bukan syarat go-live.
+
+PAYMENT & TRANSACTION FEE — UPDATED (24 Jan 2026)
+Identitas Umum
+
+Client ID: BRN-0215-1769198003100
+
+Currency: IDR
+
+Status Aggregator: Aktif
+
+Last Update: 24 January 2026 (03:37 WIB)
+
+1. WhatsApp Link
+
+Transaction Fee: 0
+
+Tenor: –
+
+Aggregator: No
+
+Catatan: Kanal komunikasi, bukan payment
+
+2. Peer-to-Peer (Akulaku)
+
+Channel: PEER_TO_PEER_AKULAKU
+
+Transaction Fee: 1.5%
+
+Tenor: Sesuai ketentuan provider
+
+Aggregator: Yes
+
+Last Update: 24 January 2026 (03:01 WIB)
+
+3. Virtual Account (Flat Fee)
+
+Semua VA flat Rp4.000 / transaksi
+
+BIN	Bank / VA	Fee
+18990	VA Bank	Rp4.000
+82913	VA Bank	Rp4.000
+89656	VA Bank	Rp4.000
+89220327	VA Bank	Rp4.000
+123626	VA Bank	Rp4.000
+8000000	VA Bank	Rp4.000
+60590	VA Bank	Rp4.000
+
+Aggregator: Yes
+
+Last Update: 24 January 2026 (03:01 WIB)
+
+4. E-Money
+
+Merchant ID: 85344
+
+Transaction Fee: 1.5%
+
+Aggregator: Yes
+
+Last Update: 24 January 2026 (03:01 WIB)
+
+RINGKASAN PRAKTIS (UNTUK KEPUTUSAN BISNIS)
+
+Paling murah & stabil: Virtual Account (Rp4.000 flat)
+
+Persentase fee:
+
+P2P Akulaku → 1.5%
+
+E-Money → 1.5%
+
+WhatsApp Link: gratis, hanya kanal komunikasi
+
+Belum ada biaya tambahan tersembunyi di data ini
+
+CATATAN PENTING (TRANSPARAN)
+
+Data ini belum memasukkan pajak gateway (PPN) bila ada di level invoice provider.
+
+Belum termasuk biaya internal platform Assistenku (10%) dan pajak customer (jika dikenakan).
+
+Aman dijadikan baseline ledger & pricing logic backend.
