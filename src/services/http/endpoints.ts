@@ -3,23 +3,42 @@ export const endpoints = {
     whoami: "/api/auth/whoami",
   },
 
+  /* =========================
+     CLIENT (Customer App)
+     ========================= */
   client: {
+    services: "/api/client/services",
+    orders: "/api/client/orders",
+    orderDetail: (id: string) => `/api/client/orders/${id}`,
+    orderPay: (id: string) => `/api/client/orders/${id}/pay`,
     invoicesList: "/api/client/invoices/list",
   },
 
+  /* =========================
+     CONFIG (Legacy / fallback)
+     ========================= */
   config: {
     services: "/api/config/services",
     pricing: "/api/config/pricing",
   },
 
+  /* =========================
+     CUSTOMER (Identity)
+     ========================= */
   customer: {
     me: "/api/customer/me",
   },
 
+  /* =========================
+     SERVICES (Public / legacy)
+     ========================= */
   services: {
     list: "/api/services/list",
   },
 
+  /* =========================
+     ORDERS (Legacy / admin / mitra)
+     ========================= */
   orders: {
     list: "/api/orders/list",
     create: "/api/orders/create",
@@ -30,34 +49,5 @@ export const endpoints = {
       `/api/orders/${id}/evidence/decision`,
     paymentCreate: (id: string) =>
       `/api/orders/${id}/payment/create`,
-    paymentProof: (id: string) =>
-      `/api/orders/${id}/payment/proof`,
-  },
-
-  disputes: {
-    list: "/api/disputes/list",
-    create: "/api/disputes/create",
-  },
-
-  invoices: {
-    list: "/api/invoices/list",
-    markPaidRequest: "/api/invoices/mark-paid-request",
-  },
-
-  payments: {
-    list: "/api/payments/list",
-  },
-
-  chat: {
-    list: "/api/chat/list",
-    send: "/api/chat/send",
-  },
-
-  core: {
-    logError: "https://assistenku-core.vercel.app/api/log-error",
-  },
-
-  admin: {
-    servicesList: "/api/services/list",
   },
 };
