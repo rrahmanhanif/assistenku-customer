@@ -4,6 +4,7 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import "leaflet/dist/leaflet.css";
 import { supabase } from "./lib/supabase";
 import { revealDeviceId } from "./lib/device";
+import CustomerGate from "./components/CustomerGate";
 
 import Login from "./pages/Login";
 import Home from "./pages/Home";
@@ -29,35 +30,17 @@ export default function App() {
   const loggedIn = localStorage.getItem("customer_auth") === "true";
 
   useEffect(() => {
-    async function checkDevice() {
-      const storedDevice = localStorage.getItem("device_id");
-      const deviceLocal = revealDeviceId(storedDevice) || storedDevice;
-      const customerId = localStorage.getItem("customer_id");
-
-      if (!deviceLocal || !customerId) return;
-
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("device_id")
-        .eq("id", customerId)
-        .single();
-
-      if (error) return;
-
-      if (data && data.device_id !== deviceLocal) {
-        alert(
-          "Kami mendeteksi sesi lain aktif di perangkat berbeda. Demi keamanan, kami keluarkan sesi ini. Silakan login kembali di perangkat yang ingin digunakan."
-        );
-        localStorage.clear();
-        window.location.href = "/login";
-      }
-    }
-
-    checkDevice();
+    revealDeviceId();
   }, []);
 
   useEffect(() => {
     if (!loggedIn) return;
+
+    // Keep Supabase session alive if needed
+    const session = supabase?.auth?.session?.();
+    if (session?.access_token) {
+      localStorage.setItem("customer_access_token", session.access_token);
+    }
 
     const customerId = localStorage.getItem("customer_id");
     const customerName = localStorage.getItem("customer_name");
@@ -85,71 +68,200 @@ export default function App() {
 
       <Route
         path="/"
-        element={loggedIn ? <Home /> : <Navigate to="/login" replace />}
+        element={
+          loggedIn ? (
+            <CustomerGate>
+              <Home />
+            </CustomerGate>
+          ) : (
+            <Navigate to="/login" replace />
+          )
+        }
       />
+
       <Route
         path="/order/new"
-        element={loggedIn ? <CreateOrder /> : <Navigate to="/login" replace />}
+        element={
+          loggedIn ? (
+            <CustomerGate>
+              <CreateOrder />
+            </CustomerGate>
+          ) : (
+            <Navigate to="/login" replace />
+          )
+        }
       />
+
       <Route
         path="/orders"
-        element={loggedIn ? <Orders /> : <Navigate to="/login" replace />}
+        element={
+          loggedIn ? (
+            <CustomerGate>
+              <Orders />
+            </CustomerGate>
+          ) : (
+            <Navigate to="/login" replace />
+          )
+        }
       />
+
       <Route
         path="/orders/:orderId"
-        element={loggedIn ? <OrderDetail /> : <Navigate to="/login" replace />}
+        element={
+          loggedIn ? (
+            <CustomerGate>
+              <OrderDetail />
+            </CustomerGate>
+          ) : (
+            <Navigate to="/login" replace />
+          )
+        }
       />
+
       <Route
         path="/invoices"
-        element={loggedIn ? <Invoices /> : <Navigate to="/login" replace />}
+        element={
+          loggedIn ? (
+            <CustomerGate>
+              <Invoices />
+            </CustomerGate>
+          ) : (
+            <Navigate to="/login" replace />
+          )
+        }
       />
+
       <Route
         path="/disputes"
-        element={loggedIn ? <Disputes /> : <Navigate to="/login" replace />}
+        element={
+          loggedIn ? (
+            <CustomerGate>
+              <Disputes />
+            </CustomerGate>
+          ) : (
+            <Navigate to="/login" replace />
+          )
+        }
       />
 
       <Route
         path="/payments"
-        element={loggedIn ? <Payments /> : <Navigate to="/login" replace />}
+        element={
+          loggedIn ? (
+            <CustomerGate>
+              <Payments />
+            </CustomerGate>
+          ) : (
+            <Navigate to="/login" replace />
+          )
+        }
       />
+
       <Route
         path="/help"
-        element={loggedIn ? <Help /> : <Navigate to="/login" replace />}
+        element={
+          loggedIn ? (
+            <CustomerGate>
+              <Help />
+            </CustomerGate>
+          ) : (
+            <Navigate to="/login" replace />
+          )
+        }
       />
 
       <Route
         path="/profile"
-        element={loggedIn ? <Profile /> : <Navigate to="/login" replace />}
-      />
-      <Route
-        path="/services"
-        element={loggedIn ? <Services /> : <Navigate to="/login" replace />}
-      />
-      <Route
-        path="/checkout/:orderId"
-        element={loggedIn ? <Checkout /> : <Navigate to="/login" replace />}
-      />
-      <Route
-        path="/track/:orderId"
-        element={loggedIn ? <TrackOrder /> : <Navigate to="/login" replace />}
-      />
-      <Route
-        path="/chat/:orderId"
-        element={loggedIn ? <Chat /> : <Navigate to="/login" replace />}
-      />
-      <Route
-        path="/history"
-        element={loggedIn ? <History /> : <Navigate to="/login" replace />}
-      />
-      <Route
-        path="/rating/:orderId"
-        element={loggedIn ? <Rating /> : <Navigate to="/login" replace />}
+        element={
+          loggedIn ? (
+            <CustomerGate>
+              <Profile />
+            </CustomerGate>
+          ) : (
+            <Navigate to="/login" replace />
+          )
+        }
       />
 
       <Route
-        path="*"
-        element={<Navigate to={loggedIn ? "/" : "/login"} replace />}
+        path="/services"
+        element={
+          loggedIn ? (
+            <CustomerGate>
+              <Services />
+            </CustomerGate>
+          ) : (
+            <Navigate to="/login" replace />
+          )
+        }
       />
+
+      <Route
+        path="/checkout/:orderId"
+        element={
+          loggedIn ? (
+            <CustomerGate>
+              <Checkout />
+            </CustomerGate>
+          ) : (
+            <Navigate to="/login" replace />
+          )
+        }
+      />
+
+      <Route
+        path="/track/:orderId"
+        element={
+          loggedIn ? (
+            <CustomerGate>
+              <TrackOrder />
+            </CustomerGate>
+          ) : (
+            <Navigate to="/login" replace />
+          )
+        }
+      />
+
+      <Route
+        path="/chat/:orderId"
+        element={
+          loggedIn ? (
+            <CustomerGate>
+              <Chat />
+            </CustomerGate>
+          ) : (
+            <Navigate to="/login" replace />
+          )
+        }
+      />
+
+      <Route
+        path="/history"
+        element={
+          loggedIn ? (
+            <CustomerGate>
+              <History />
+            </CustomerGate>
+          ) : (
+            <Navigate to="/login" replace />
+          )
+        }
+      />
+
+      <Route
+        path="/rating/:orderId"
+        element={
+          loggedIn ? (
+            <CustomerGate>
+              <Rating />
+            </CustomerGate>
+          ) : (
+            <Navigate to="/login" replace />
+          )
+        }
+      />
+
+      <Route path="*" element={<Navigate to={loggedIn ? "/" : "/login"} replace />} />
     </Routes>
   );
 }
